@@ -1,0 +1,170 @@
+{
+  "people": {
+    "grandfather": {
+      "name": "",
+      "role": {
+        "en": "grandfather",
+        "fr": "grand-père",
+        "ln": "nkoko mobali"
+      },
+      "birthYear": null,
+      "spouse": "grandmother",
+      "children": ["yamungu", "sibling_1", "sibling_2", "sibling_3"],
+      "photo": "",
+      "story": { "en": "", "fr": "", "ln": "" }
+    },
+    "grandmother": {
+      "name": "",
+      "role": {
+        "en": "grandmother",
+        "fr": "grand-mère",
+        "ln": "nkoko mwasi"
+      },
+      "birthYear": null,
+      "spouse": "grandfather",
+      "photo": "",
+      "story": { "en": "", "fr": "", "ln": "" }
+    },
+    "yamungu": {
+      "name": "Yamungu Munga",
+      "role": {
+        "en": "father",
+        "fr": "père",
+        "ln": "tata"
+      },
+      "birthYear": null,
+      "spouse": "faila",
+      "parents": ["grandfather", "grandmother"],
+      "children": [
+        "patience",
+        "elizabeth",
+        "therese",
+        "john",
+        "muhunga",
+        "josephine"
+      ],
+      "photo": "",
+      "story": { "en": "", "fr": "", "ln": "" }
+    },
+    "faila": {
+      "name": "Faila Wakilongo Munga",
+      "role": {
+        "en": "mother",
+        "fr": "mère",
+        "ln": "mama"
+      },
+      "birthYear": null,
+      "spouse": "yamungu",
+      "photo": "",
+      "story": { "en": "", "fr": "", "ln": "" }
+    },
+    "sibling_1": {
+      "name": "",
+      "role": {
+        "en": "father's sibling",
+        "fr": "frère ou sœur du père",
+        "ln": "ndeko ya tata"
+      },
+      "birthYear": null,
+      "parents": ["grandfather", "grandmother"],
+      "photo": "",
+      "story": { "en": "", "fr": "", "ln": "" }
+    },
+    "sibling_2": {
+      "name": "",
+      "role": {
+        "en": "father's sibling",
+        "fr": "frère ou sœur du père",
+        "ln": "ndeko ya tata"
+      },
+      "birthYear": null,
+      "parents": ["grandfather", "grandmother"],
+      "photo": "",
+      "story": { "en": "", "fr": "", "ln": "" }
+    },
+    "sibling_3": {
+      "name": "",
+      "role": {
+        "en": "father's sibling",
+        "fr": "frère ou sœur du père",
+        "ln": "ndeko ya tata"
+      },
+      "birthYear": null,
+      "parents": ["grandfather", "grandmother"],
+      "photo": "",
+      "story": { "en": "", "fr": "", "ln": "" }
+    },
+    "patience": {
+      "name": "Patience Munga",
+      "role": {
+        "en": "son",
+        "fr": "fils",
+        "ln": "mwana mobali"
+      },
+      "birthYear": null,
+      "parents": ["yamungu", "faila"],
+      "photo": "",
+      "story": { "en": "", "fr": "", "ln": "" }
+    },
+    "elizabeth": {
+      "name": "Elizabeth Munga",
+      "role": {
+        "en": "daughter",
+        "fr": "fille",
+        "ln": "mwana mwasi"
+      },
+      "birthYear": null,
+      "parents": ["yamungu", "faila"],
+      "photo": "",
+      "story": { "en": "", "fr": "", "ln": "" }
+    },
+    "therese": {
+      "name": "Therese Munga",
+      "role": {
+        "en": "daughter",
+        "fr": "fille",
+        "ln": "mwana mwasi"
+      },
+      "birthYear": null,
+      "parents": ["yamungu", "faila"],
+      "photo": "",
+      "story": { "en": "", "fr": "", "ln": "" }
+    },
+    "john": {
+      "name": "John Munga",
+      "role": {
+        "en": "son",
+        "fr": "fils",
+        "ln": "mwana mobali"
+      },
+      "birthYear": null,
+      "parents": ["yamungu", "faila"],
+      "photo": "",
+      "story": { "en": "", "fr": "", "ln": "" }
+    },
+    "muhunga": {
+      "name": "Muhunga Munga",
+      "role": {
+        "en": "son",
+        "fr": "fils",
+        "ln": "mwana mobali"
+      },
+      "birthYear": null,
+      "parents": ["yamungu", "faila"],
+      "photo": "",
+      "story": { "en": "", "fr": "", "ln": "" }
+    },
+    "josephine": {
+      "name": "Josephine Munga",
+      "role": {
+        "en": "daughter",
+        "fr": "fille",
+        "ln": "mwana mwasi"
+      },
+      "birthYear": null,
+      "parents": ["yamungu", "faila"],
+      "photo": "",
+      "story": { "en": "", "fr": "", "ln": "" }
+    }
+  }
+}
