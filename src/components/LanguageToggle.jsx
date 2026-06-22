@@ -4,6 +4,7 @@ const LANGUAGES = [
   { code: 'en', label: 'EN' },
   { code: 'fr', label: 'FR' },
   { code: 'ln', label: 'LN' },
+  { code: 'sw', label: 'SW' },
 ]
 
 export default function LanguageToggle() {
@@ -11,28 +12,28 @@ export default function LanguageToggle() {
 
   return (
     <div
-      className="fixed top-4 right-4 z-40 flex rounded-full border border-stone-200/80 bg-cream/95 p-1 shadow-sm backdrop-blur-sm"
+      className="max-w-[11rem] overflow-x-auto no-scrollbar sm:max-w-none"
       role="group"
       aria-label="Language"
     >
-      {LANGUAGES.map(({ code, label }) => {
-        const isActive = language === code
-        return (
-          <button
-            key={code}
-            type="button"
-            onClick={() => setLanguage(code)}
-            aria-pressed={isActive}
-            className={`rounded-full px-3 py-1.5 font-sans-label text-xs tracking-wide transition-colors [font-variant-caps:small-caps] ${
-              isActive
-                ? 'bg-stone-800 text-cream'
-                : 'text-stone-600 hover:bg-stone-200/60 hover:text-stone-800'
-            }`}
-          >
-            {label}
-          </button>
-        )
-      })}
+      <div className="flex w-max rounded-full border border-white/10 bg-white/5 p-0.5 backdrop-blur-md">
+        {LANGUAGES.map(({ code, label }) => {
+          const isActive = language === code
+          return (
+            <button
+              key={code}
+              type="button"
+              onClick={() => setLanguage(code)}
+              aria-pressed={isActive}
+              className={`rounded-full px-2 py-1 font-sans-label text-[0.65rem] font-medium tracking-wide transition-colors sm:px-2.5 sm:text-[0.7rem] ${
+                isActive ? 'bg-white text-black' : 'text-white/55 hover:text-white'
+              }`}
+            >
+              {label}
+            </button>
+          )
+        })}
+      </div>
     </div>
   )
 }

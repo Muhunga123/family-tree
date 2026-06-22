@@ -1,4 +1,4 @@
-const LANGUAGES = ['en', 'fr', 'ln']
+const LANGUAGES = ['en', 'fr', 'ln', 'sw']
 
 export function getLocalizedText(field, language, fallback = '') {
   if (!field) return fallback

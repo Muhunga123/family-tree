@@ -5,32 +5,35 @@
       "role": {
         "en": "grandfather",
         "fr": "grand-père",
-        "ln": "nkoko mobali"
+        "ln": "nkoko mobali",
+        "sw": "babu"
       },
       "birthYear": null,
       "spouse": "grandmother",
       "children": ["yamungu", "sibling_1", "sibling_2", "sibling_3"],
       "photo": "",
-      "story": { "en": "", "fr": "", "ln": "" }
+      "story": { "en": "", "fr": "", "ln": "", "sw": "" }
     },
     "grandmother": {
       "name": "",
       "role": {
         "en": "grandmother",
         "fr": "grand-mère",
-        "ln": "nkoko mwasi"
+        "ln": "nkoko mwasi",
+        "sw": "bibi"
       },
       "birthYear": null,
       "spouse": "grandfather",
       "photo": "",
-      "story": { "en": "", "fr": "", "ln": "" }
+      "story": { "en": "", "fr": "", "ln": "", "sw": "" }
     },
     "yamungu": {
       "name": "Yamungu Munga",
       "role": {
         "en": "father",
         "fr": "père",
-        "ln": "tata"
+        "ln": "tata",
+        "sw": "baba"
       },
       "birthYear": null,
       "spouse": "faila",
@@ -44,127 +47,137 @@
         "josephine"
       ],
       "photo": "",
-      "story": { "en": "", "fr": "", "ln": "" }
+      "story": { "en": "", "fr": "", "ln": "", "sw": "" }
     },
     "faila": {
       "name": "Faila Wakilongo Munga",
       "role": {
         "en": "mother",
         "fr": "mère",
-        "ln": "mama"
+        "ln": "mama",
+        "sw": "mama"
       },
       "birthYear": null,
       "spouse": "yamungu",
       "photo": "",
-      "story": { "en": "", "fr": "", "ln": "" }
+      "story": { "en": "", "fr": "", "ln": "", "sw": "" }
     },
     "sibling_1": {
       "name": "",
       "role": {
         "en": "father's sibling",
         "fr": "frère ou sœur du père",
-        "ln": "ndeko ya tata"
+        "ln": "ndeko ya tata",
+        "sw": "ndugu wa baba"
       },
       "birthYear": null,
       "parents": ["grandfather", "grandmother"],
       "photo": "",
-      "story": { "en": "", "fr": "", "ln": "" }
+      "story": { "en": "", "fr": "", "ln": "", "sw": "" }
     },
     "sibling_2": {
       "name": "",
       "role": {
         "en": "father's sibling",
         "fr": "frère ou sœur du père",
-        "ln": "ndeko ya tata"
+        "ln": "ndeko ya tata",
+        "sw": "ndugu wa baba"
       },
       "birthYear": null,
       "parents": ["grandfather", "grandmother"],
       "photo": "",
-      "story": { "en": "", "fr": "", "ln": "" }
+      "story": { "en": "", "fr": "", "ln": "", "sw": "" }
     },
     "sibling_3": {
       "name": "",
       "role": {
         "en": "father's sibling",
         "fr": "frère ou sœur du père",
-        "ln": "ndeko ya tata"
+        "ln": "ndeko ya tata",
+        "sw": "ndugu wa baba"
       },
       "birthYear": null,
       "parents": ["grandfather", "grandmother"],
       "photo": "",
-      "story": { "en": "", "fr": "", "ln": "" }
+      "story": { "en": "", "fr": "", "ln": "", "sw": "" }
     },
     "patience": {
       "name": "Patience Munga",
       "role": {
         "en": "son",
         "fr": "fils",
-        "ln": "mwana mobali"
+        "ln": "mwana mobali",
+        "sw": "mwana wa kiume"
       },
       "birthYear": null,
       "parents": ["yamungu", "faila"],
       "photo": "",
-      "story": { "en": "", "fr": "", "ln": "" }
+      "story": { "en": "", "fr": "", "ln": "", "sw": "" }
     },
     "elizabeth": {
       "name": "Elizabeth Munga",
       "role": {
         "en": "daughter",
         "fr": "fille",
-        "ln": "mwana mwasi"
+        "ln": "mwana mwasi",
+        "sw": "binti"
       },
       "birthYear": null,
       "parents": ["yamungu", "faila"],
       "photo": "",
-      "story": { "en": "", "fr": "", "ln": "" }
+      "story": { "en": "", "fr": "", "ln": "", "sw": "" }
     },
     "therese": {
       "name": "Therese Munga",
       "role": {
         "en": "daughter",
         "fr": "fille",
-        "ln": "mwana mwasi"
+        "ln": "mwana mwasi",
+        "sw": "binti"
       },
       "birthYear": null,
       "parents": ["yamungu", "faila"],
       "photo": "",
-      "story": { "en": "", "fr": "", "ln": "" }
+      "story": { "en": "", "fr": "", "ln": "", "sw": "" }
     },
     "john": {
       "name": "John Munga",
       "role": {
         "en": "son",
         "fr": "fils",
-        "ln": "mwana mobali"
+        "ln": "mwana mobali",
+        "sw": "mwana wa kiume"
       },
       "birthYear": null,
       "parents": ["yamungu", "faila"],
       "photo": "",
-      "story": { "en": "", "fr": "", "ln": "" }
+      "story": { "en": "", "fr": "", "ln": "", "sw": "" }
     },
     "muhunga": {
       "name": "Muhunga Munga",
       "role": {
         "en": "son",
         "fr": "fils",
-        "ln": "mwana mobali"
+        "ln": "mwana mobali",
+        "sw": "mwana wa kiume"
       },
       "birthYear": null,
       "parents": ["yamungu", "faila"],
       "photo": "",
-      "story": { "en": "", "fr": "", "ln": "" }
+      "story": { "en": "", "fr": "", "ln": "", "sw": "" }
     },
     "josephine": {
       "name": "Josephine Munga",
       "role": {
         "en": "daughter",
         "fr": "fille",
-        "ln": "mwana mwasi"
+        "ln": "mwana mwasi",
+        "sw": "binti"
       },
       "birthYear": null,
       "parents": ["yamungu", "faila"],
       "photo": "",
-      "story": { "en": "", "fr": "", "ln": "" }
+      "story": { "en": "", "fr": "", "ln": "", "sw": "" }
     }
   }
 }
