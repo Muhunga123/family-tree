@@ -18,13 +18,20 @@ export default defineConfig({
         theme_color: '#07070a',
         background_color: '#07070a',
         display: 'standalone',
+        orientation: 'portrait',
         start_url: '/',
         icons: [
           {
             src: '/icon.svg',
-            sizes: 'any',
+            sizes: '512x512',
             type: 'image/svg+xml',
-            purpose: 'any maskable',
+            purpose: 'any',
+          },
+          {
+            src: '/icon.svg',
+            sizes: '512x512',
+            type: 'image/svg+xml',
+            purpose: 'maskable',
           },
         ],
       },

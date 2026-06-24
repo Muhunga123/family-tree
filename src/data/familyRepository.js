@@ -43,6 +43,8 @@ function fileToDataUrl(file) {
 function createLocalBackend() {
   let raw = structuredClone(seedData.people ?? {})
   let listeners = new Set()
+  let memories = [] // { id, person_id, author, body, created_at }
+  let publicAccess = false
 
   const snapshot = () => {
     const people = normalizePeople(raw)
@@ -53,6 +55,7 @@ function createLocalBackend() {
       people,
       rootId: pickRootId(people),
       myRole: 'owner',
+      publicAccess,
     }
   }
 
@@ -78,11 +81,35 @@ function createLocalBackend() {
         gender: data.gender ?? null,
         birthYear: data.birthYear ?? null,
         deathYear: data.deathYear ?? null,
+        birthDate: data.birthDate ?? null,
+        deathDate: data.deathDate ?? null,
+        birthPlace: data.birthPlace ?? null,
+        places: data.places ?? [],
         photo: data.photo ?? '',
         story: data.story ?? { en: '', fr: '', ln: '', sw: '' },
-        parents: [...(data.parentIds ?? [])],
-        children: [...(data.childIds ?? [])],
-        partners: [...(data.partnerIds ?? [])],
+        parents: [],
+        children: [],
+        partners: [],
+        siblings: [],
+        siblingAnchors: [],
+      }
+      for (const parentId of data.parentIds ?? []) {
+        if (raw[parentId]) {
+          raw[id].parents.push(parentId)
+          raw[parentId].children = [...new Set([...(raw[parentId].children ?? []), id])]
+        }
+      }
+      for (const childId of data.childIds ?? []) {
+        if (raw[childId]) {
+          raw[id].children.push(childId)
+          raw[childId].parents = [...new Set([...(raw[childId].parents ?? []), id])]
+        }
+      }
+      for (const partnerId of data.partnerIds ?? []) {
+        if (raw[partnerId]) {
+          raw[id].partners.push(partnerId)
+          raw[partnerId].partners = [...new Set([...(raw[partnerId].partners ?? []), id])]
+        }
       }
       emit()
       return id
@@ -98,6 +125,8 @@ function createLocalBackend() {
         person.parents = (person.parents ?? []).filter((x) => x !== id)
         person.children = (person.children ?? []).filter((x) => x !== id)
         person.partners = (person.partners ?? []).filter((x) => x !== id)
+        person.siblings = (person.siblings ?? []).filter((x) => x !== id)
+        person.siblingAnchors = (person.siblingAnchors ?? []).filter((x) => x !== id)
         if (person.spouse === id) delete person.spouse
       }
       emit()
@@ -118,9 +147,63 @@ function createLocalBackend() {
       ]
       emit()
     },
+    /** anchorId = person linked to, satelliteId = the sibling being added. */
+    async linkSiblings(anchorId, satelliteId) {
+      if (!raw[anchorId] || !raw[satelliteId]) return
+      raw[anchorId].siblings = [...new Set([...(raw[anchorId].siblings ?? []), satelliteId])]
+      raw[satelliteId].siblings = [...new Set([...(raw[satelliteId].siblings ?? []), anchorId])]
+      raw[satelliteId].siblingAnchors = [
+        ...new Set([...(raw[satelliteId].siblingAnchors ?? []), anchorId]),
+      ]
+      emit()
+    },
     async uploadPhoto(file) {
       const url = await fileToDataUrl(file)
       return { url, path: url }
+    },
+    async unlinkPartners(aId, bId) {
+      if (raw[aId]) raw[aId].partners = (raw[aId].partners ?? []).filter((x) => x !== bId)
+      if (raw[bId]) raw[bId].partners = (raw[bId].partners ?? []).filter((x) => x !== aId)
+      emit()
+    },
+    async unlinkParentChild(parentId, childId) {
+      if (raw[parentId])
+        raw[parentId].children = (raw[parentId].children ?? []).filter((x) => x !== childId)
+      if (raw[childId])
+        raw[childId].parents = (raw[childId].parents ?? []).filter((x) => x !== parentId)
+      emit()
+    },
+    async unlinkSiblings(aId, bId) {
+      if (raw[aId]) {
+        raw[aId].siblings = (raw[aId].siblings ?? []).filter((x) => x !== bId)
+        raw[aId].siblingAnchors = (raw[aId].siblingAnchors ?? []).filter((x) => x !== bId)
+      }
+      if (raw[bId]) {
+        raw[bId].siblings = (raw[bId].siblings ?? []).filter((x) => x !== aId)
+        raw[bId].siblingAnchors = (raw[bId].siblingAnchors ?? []).filter((x) => x !== aId)
+      }
+      emit()
+    },
+    async listMemories(personId) {
+      return memories.filter((m) => m.person_id === personId)
+    },
+    async addMemory(personId, { author, body }) {
+      memories.push({
+        id: `m-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        person_id: personId,
+        author: (author || '').trim() || null,
+        body: (body || '').trim(),
+        created_at: new Date().toISOString(),
+      })
+      emit()
+    },
+    async deleteMemory(id) {
+      memories = memories.filter((m) => m.id !== id)
+      emit()
+    },
+    async setPublicAccess(value) {
+      publicAccess = value
+      emit()
     },
     async listMembers() {
       return []
@@ -138,9 +221,7 @@ let backend = null
 
 export function getRepository() {
   if (!backend) {
-    backend = isSupabaseConfigured()
-      ? createCloudBackend({ makeId })
-      : createLocalBackend()
+    backend = isSupabaseConfigured() ? createCloudBackend() : createLocalBackend()
   }
   return backend
 }

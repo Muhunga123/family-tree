@@ -14,10 +14,18 @@ html,
 body,
 #root {
   height: 100%;
+  height: 100dvh;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
   margin: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: manipulation;
   color: #f5f5f7;
   background-color: var(--color-ink);
   background-image:
@@ -35,4 +43,69 @@ body {
 }
 .no-scrollbar::-webkit-scrollbar {
   display: none;
+}
+
+/* Ambient, slowly breathing aurora behind every lens. Purely decorative. */
+.ambient-bg {
+  position: absolute;
+  inset: -20%;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(40rem 40rem at 30% 20%, rgba(124, 108, 255, 0.1), transparent 60%),
+    radial-gradient(34rem 34rem at 75% 80%, rgba(39, 211, 196, 0.08), transparent 60%);
+  filter: blur(8px);
+  animation: ambient-breathe 18s ease-in-out infinite;
+}
+
+@keyframes ambient-breathe {
+  0%,
+  100% {
+    transform: scale(1) translate(0, 0);
+    opacity: 0.85;
+  }
+  50% {
+    transform: scale(1.08) translate(1.5%, -1.5%);
+    opacity: 1;
+  }
+}
+
+/* Connector rails gently fade/light up each time the lineage view changes. */
+.connector-layer {
+  animation: connector-in 0.55s ease-out both;
+}
+
+@keyframes connector-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ambient-bg,
+  .connector-layer {
+    animation: none;
+  }
+}
+
+.app-shell {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Prevent iOS zoom when focusing inputs (needs 16px+). */
+@media (max-width: 639px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
 }

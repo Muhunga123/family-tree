@@ -4,6 +4,7 @@ import { useTree } from '../hooks/useTree'
 import { useLanguage } from '../hooks/useLanguage'
 import { lifespanLabel } from '../utils/neighborhood'
 import { getAccent, getDisplayName, getInitials } from '../utils/personColor'
+import MemoriesPanel from './MemoriesPanel'
 
 function RelationChips({ title, ids, people, onPick, t }) {
   const list = ids.map((id) => people[id]).filter(Boolean)
@@ -50,8 +51,10 @@ export default function PersonSheet() {
     openEditor,
     cloudEnabled,
     canEdit,
+    relateFrom,
+    setViewMode,
   } = useTree()
-  const { t } = useLanguage()
+  const { t, ui } = useLanguage()
 
   useEffect(() => {
     if (!selectedPerson) return
@@ -89,7 +92,7 @@ export default function PersonSheet() {
           <motion.aside
             role="dialog"
             aria-modal="true"
-            className="relative flex max-h-[88vh] w-full flex-col overflow-hidden rounded-t-3xl border border-white/10 bg-ink-2/95 shadow-2xl backdrop-blur-2xl md:h-full md:max-h-none md:w-[420px] md:rounded-none md:rounded-l-3xl md:border-l"
+            className="relative flex max-h-[min(88dvh,900px)] w-full flex-col overflow-hidden rounded-t-3xl border border-white/10 bg-ink-2/95 shadow-2xl backdrop-blur-2xl md:h-full md:max-h-none md:w-[420px] md:rounded-none md:rounded-l-3xl md:border-l"
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
@@ -137,20 +140,39 @@ export default function PersonSheet() {
               </button>
             </div>
 
-            <div className="flex flex-col gap-6 overflow-y-auto px-6 pt-6 pb-8">
+            <div className="flex flex-col gap-6 overflow-y-auto px-5 pt-6 pb-[calc(2rem+env(safe-area-inset-bottom))] sm:px-6">
               <div className="flex flex-col gap-2">
                 <h3 className="font-sans-label text-[0.65rem] tracking-[0.18em] text-white/35 uppercase">
-                  Story
+                  {ui('label.story')}
                 </h3>
                 <p className="font-serif-display text-base leading-relaxed text-white/80">
-                  {t(selectedPerson.story, 'No story yet.')}
+                  {t(selectedPerson.story, ui('misc.noStory'))}
                 </p>
               </div>
 
-              <RelationChips title="Parents" ids={selectedPerson.parentIds} people={people} onPick={pickRelative} t={t} />
-              <RelationChips title="Partner" ids={selectedPerson.partnerIds} people={people} onPick={pickRelative} t={t} />
-              <RelationChips title="Siblings" ids={selectedPerson.siblingIds} people={people} onPick={pickRelative} t={t} />
-              <RelationChips title="Children" ids={selectedPerson.childIds} people={people} onPick={pickRelative} t={t} />
+              <RelationChips title={ui('label.parents')} ids={selectedPerson.parentIds} people={people} onPick={pickRelative} t={t} />
+              <RelationChips title={ui('label.partner')} ids={selectedPerson.partnerIds} people={people} onPick={pickRelative} t={t} />
+              <RelationChips title={ui('label.siblings')} ids={selectedPerson.siblingIds} people={people} onPick={pickRelative} t={t} />
+              <RelationChips title={ui('label.children')} ids={selectedPerson.childIds} people={people} onPick={pickRelative} t={t} />
+
+              <MemoriesPanel personId={selectedPerson.id} />
+
+              <button
+                type="button"
+                onClick={() => {
+                  relateFrom(selectedPerson.id)
+                  setViewMode('overview')
+                  closePerson()
+                }}
+                className="flex items-center justify-center gap-2 rounded-2xl border border-white/10 px-4 py-3 font-sans-label text-sm text-white/75 transition-colors hover:bg-white/5"
+              >
+                <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
+                  <circle cx="7" cy="7" r="3" fill="none" stroke="currentColor" strokeWidth="1.6" />
+                  <circle cx="17" cy="17" r="3" fill="none" stroke="currentColor" strokeWidth="1.6" />
+                  <path d="M9.2 9.2l5.6 5.6" stroke="currentColor" strokeWidth="1.6" />
+                </svg>
+                {ui('action.relate')}
+              </button>
 
               <div className="mt-2 flex flex-wrap gap-2">
                 <button
@@ -158,7 +180,7 @@ export default function PersonSheet() {
                   onClick={() => pickRelative(selectedPerson.id)}
                   className={`rounded-2xl bg-white/10 px-4 py-3.5 font-sans-label text-sm text-white transition-colors hover:bg-white/15 ${canEdit ? 'flex-1' : 'w-full'}`}
                 >
-                  Center on tree
+                  {ui('action.center')}
                 </button>
                 {canEdit && (
                   <button
@@ -169,7 +191,7 @@ export default function PersonSheet() {
                     }}
                     className="flex-1 rounded-2xl bg-white px-4 py-3.5 font-sans-label text-sm font-medium text-black transition-colors hover:bg-white/90"
                   >
-                    Edit
+                    {ui('action.edit')}
                   </button>
                 )}
               </div>
@@ -182,7 +204,7 @@ export default function PersonSheet() {
                   }}
                   className="rounded-2xl border border-white/10 px-4 py-3.5 font-sans-label text-sm text-white/80 transition-colors hover:bg-white/5"
                 >
-                  + Add a relative
+                  {ui('action.addRelative')}
                 </button>
               )}
               {!cloudEnabled && canEdit && (

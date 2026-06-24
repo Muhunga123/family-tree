@@ -1,22 +1,3 @@
-const PALETTE = [
-  { bg: 'bg-amber-200', text: 'text-amber-900' },
-  { bg: 'bg-rose-200', text: 'text-rose-900' },
-  { bg: 'bg-sky-200', text: 'text-sky-900' },
-  { bg: 'bg-emerald-200', text: 'text-emerald-900' },
-  { bg: 'bg-violet-200', text: 'text-violet-900' },
-  { bg: 'bg-orange-200', text: 'text-orange-900' },
-  { bg: 'bg-teal-200', text: 'text-teal-900' },
-  { bg: 'bg-fuchsia-200', text: 'text-fuchsia-900' },
-]
-
-export function getPersonColor(id) {
-  let hash = 0
-  for (let i = 0; i < id.length; i++) {
-    hash = id.charCodeAt(i) + ((hash << 5) - hash)
-  }
-  return PALETTE[Math.abs(hash) % PALETTE.length]
-}
-
 export function getInitials(name) {
   const initials = (name ?? '')
     .split(/\s+/)
@@ -58,4 +39,51 @@ function hashId(id) {
 export function getAccent(person) {
   const key = person?.lineage || person?.id || 'x'
   return ACCENTS[hashId(key) % ACCENTS.length]
+}
+
+export function isDeceased(person) {
+  return Boolean(person?.deathYear || person?.deathDate)
+}
+
+/** Muted avatar treatment for deceased relatives — much greyer, with a soft silvery glow. */
+export function memorialAvatarBackground() {
+  return 'linear-gradient(145deg, #737378 0%, #525256 52%, #3f3f43 100%)'
+}
+
+export function memorialAvatarFilter() {
+  return 'grayscale(1) saturate(0.08) brightness(0.78) contrast(0.92)'
+}
+
+export function memorialInitialsColor() {
+  return '#d8d4cc'
+}
+
+/** Shady silvery halo — muted grey with a gentle bright center. */
+export function memorialGlow(isFocal = false) {
+  return isFocal ? 'rgba(228, 228, 234, 0.72)' : 'rgba(198, 200, 208, 0.58)'
+}
+
+export function memorialGlowOpacity(isFocal = false) {
+  return isFocal ? 0.82 : 0.68
+}
+
+export function memorialAvatarShadow({ isFocal = false, highlighted = false } = {}) {
+  if (highlighted) {
+    return '0 0 0 3px rgba(255,255,255,0.9), 0 0 28px rgba(210, 212, 220, 0.45)'
+  }
+  if (isFocal) {
+    return '0 0 0 1px rgba(255,255,255,0.28), 0 0 22px rgba(205, 207, 215, 0.42), inset 0 1px 0 rgba(255,255,255,0.16)'
+  }
+  return '0 0 0 1px rgba(255,255,255,0.16), 0 0 16px rgba(185, 187, 195, 0.32), inset 0 1px 0 rgba(255,255,255,0.1)'
+}
+
+// Generational warmth ramp: the oldest generation glows warm gold; each
+// descending generation cools toward soft blue. Returns an rgba() string.
+const WARM = [247, 201, 120]
+const COOL = [150, 190, 255]
+
+export function generationGlow(depth = 0, maxDepth = 0, alpha = 0.5) {
+  const ratio = maxDepth > 0 ? Math.min(1, Math.max(0, depth / maxDepth)) : 0
+  const c = WARM.map((w, i) => Math.round(w + (COOL[i] - w) * ratio))
+  return `rgba(${c[0]}, ${c[1]}, ${c[2]}, ${alpha})`
 }

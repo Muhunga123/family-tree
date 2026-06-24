@@ -40,12 +40,12 @@ export function getNeighborhood(people, focalId) {
 }
 
 /**
- * Short life-span label, e.g. "1948", "1948 – 1990", "b. 1948".
+ * Short life-span label, e.g. "1948", "1948 – †2021", "b. 1948".
  */
 export function lifespanLabel(person) {
   const { birthYear, deathYear } = person
-  if (birthYear && deathYear) return `${birthYear} – ${deathYear}`
+  if (birthYear && deathYear) return `${birthYear} – †${deathYear}`
   if (birthYear) return `b. ${birthYear}`
-  if (deathYear) return `d. ${deathYear}`
+  if (deathYear) return `†${deathYear}`
   return ''
 }

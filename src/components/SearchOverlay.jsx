@@ -3,21 +3,18 @@ import { AnimatePresence, motion } from 'motion/react'
 import { useTree } from '../hooks/useTree'
 import { useLanguage } from '../hooks/useLanguage'
 import { lifespanLabel } from '../utils/neighborhood'
-import { getAccent, getDisplayName, getInitials } from '../utils/personColor'
+import { getDisplayName } from '../utils/personColor'
+import PersonAvatar from './PersonAvatar'
 
 export default function SearchOverlay() {
-  const { searchOpen, setSearchOpen, peopleList, navigateTo } = useTree()
+  const { searchOpen, setSearchOpen, peopleList, navigateTo, setViewMode } = useTree()
   const { t } = useLanguage()
   const [query, setQuery] = useState('')
-  const [wasOpen, setWasOpen] = useState(false)
   const inputRef = useRef(null)
 
-  if (searchOpen && !wasOpen) {
-    setWasOpen(true)
-    setQuery('')
-  } else if (!searchOpen && wasOpen) {
-    setWasOpen(false)
-  }
+  useEffect(() => {
+    if (searchOpen) setQuery('')
+  }, [searchOpen])
 
   useEffect(() => {
     if (!searchOpen) return
@@ -36,11 +33,8 @@ export default function SearchOverlay() {
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase()
-    const list = [...peopleList].sort((a, b) =>
-      getDisplayName(a, t(a.role)).localeCompare(getDisplayName(b, t(b.role))),
-    )
-    if (!q) return list
-    return list.filter((p) => {
+    if (!q) return peopleList
+    return peopleList.filter((p) => {
       const name = getDisplayName(p, t(p.role)).toLowerCase()
       const role = (t(p.role) || '').toLowerCase()
       return name.includes(q) || role.includes(q)
@@ -49,6 +43,7 @@ export default function SearchOverlay() {
 
   const pick = (id) => {
     navigateTo(id)
+    setViewMode('focus')
     setSearchOpen(false)
   }
 
@@ -62,7 +57,7 @@ export default function SearchOverlay() {
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
         >
-          <div className="mx-auto flex w-full max-w-xl flex-col gap-4 px-4 pt-6 pb-2 sm:pt-10">
+          <div className="mx-auto flex w-full max-w-xl flex-col gap-3 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-2 sm:gap-4 sm:pt-10">
             <div className="flex items-center gap-3">
               <div className="flex flex-1 items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
                 <svg viewBox="0 0 24 24" className="h-5 w-5 text-white/40" aria-hidden="true">
@@ -87,10 +82,9 @@ export default function SearchOverlay() {
             </div>
           </div>
 
-          <div className="mx-auto w-full max-w-xl flex-1 overflow-y-auto px-4 pb-10">
+          <div className="mx-auto w-full max-w-xl flex-1 overflow-y-auto px-4 pb-[calc(2rem+env(safe-area-inset-bottom))]">
             <ul className="flex flex-col gap-1">
               {results.map((person) => {
-                const accent = getAccent(person)
                 const name = getDisplayName(person, t(person.role))
                 const lifespan = lifespanLabel(person)
                 return (
@@ -100,16 +94,7 @@ export default function SearchOverlay() {
                       onClick={() => pick(person.id)}
                       className="flex w-full items-center gap-3 rounded-2xl p-2 text-left transition-colors hover:bg-white/5"
                     >
-                      <span
-                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white"
-                        style={{ background: `linear-gradient(140deg, ${accent.from}, ${accent.to})` }}
-                      >
-                        {person.photo ? (
-                          <img src={person.photo} alt="" className="h-full w-full rounded-full object-cover" />
-                        ) : (
-                          getInitials(person.name)
-                        )}
-                      </span>
+                      <PersonAvatar person={person} size={44} />
                       <span className="flex flex-col">
                         <span className="font-serif-display text-white">{name}</span>
                         <span className="font-sans-label text-xs text-white/45">

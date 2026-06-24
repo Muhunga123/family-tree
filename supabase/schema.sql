@@ -46,7 +46,7 @@ create table if not exists public.people (
 create table if not exists public.relationships (
   id uuid primary key default gen_random_uuid(),
   tree_id uuid not null references public.trees (id) on delete cascade,
-  kind text not null check (kind in ('parent', 'partner')),
+  kind text not null check (kind in ('parent', 'partner', 'sibling')),
   a_id uuid not null references public.people (id) on delete cascade,
   b_id uuid not null references public.people (id) on delete cascade,
   created_at timestamptz not null default now()

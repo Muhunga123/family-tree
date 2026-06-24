@@ -6,11 +6,16 @@ import { useTree } from './hooks/useTree'
 import TopBar from './components/TopBar'
 import BottomBar from './components/BottomBar'
 import TreeCanvas from './components/TreeCanvas'
+import OverviewCanvas from './components/OverviewCanvas'
+import TimelineCanvas from './components/TimelineCanvas'
+import MapCanvas from './components/MapCanvas'
 import SearchOverlay from './components/SearchOverlay'
 import PersonSheet from './components/PersonSheet'
 import PersonEditor from './components/PersonEditor'
 import ShareSheet from './components/ShareSheet'
 import InstallHint from './components/InstallHint'
+import RelateBar from './components/RelateBar'
+import TodayBanner from './components/TodayBanner'
 
 function LoadingScreen() {
   return (
@@ -24,7 +29,7 @@ function LoadingScreen() {
 }
 
 function AppShell() {
-  const { loading, error } = useTree()
+  const { loading, error, viewMode } = useTree()
 
   if (loading) return <LoadingScreen />
   if (error) {
@@ -37,11 +42,23 @@ function AppShell() {
     )
   }
 
+  const Lens =
+    viewMode === 'overview'
+      ? OverviewCanvas
+      : viewMode === 'timeline'
+        ? TimelineCanvas
+        : viewMode === 'map'
+          ? MapCanvas
+          : TreeCanvas
+
   return (
-    <div className="relative h-dvh w-full overflow-hidden">
-      <TreeCanvas />
+    <div className="app-shell relative h-dvh w-full overflow-hidden">
+      <div className="ambient-bg" aria-hidden="true" />
+      <Lens />
       <TopBar />
+      <TodayBanner />
       <BottomBar />
+      <RelateBar />
       <SearchOverlay />
       <PersonSheet />
       <PersonEditor />

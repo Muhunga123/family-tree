@@ -18,7 +18,7 @@ export default function InstallHint() {
   useEffect(() => {
     if (!isMobile() || isStandalone()) return
     if (localStorage.getItem('install-hint-dismissed')) return
-    const id = window.setTimeout(() => setVisible(true), 2000)
+    const id = window.setTimeout(() => setVisible(true), 1200)
     return () => window.clearTimeout(id)
   }, [])
 
@@ -33,21 +33,23 @@ export default function InstallHint() {
     <AnimatePresence>
       {visible && (
         <motion.div
-          className="pointer-events-none fixed inset-x-0 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-20 flex justify-center px-4"
+          className="pointer-events-none fixed inset-x-0 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-20 flex justify-center px-3 sm:px-4"
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 12 }}
         >
-          <div className="pointer-events-auto max-w-sm rounded-2xl border border-white/10 bg-ink-2/95 px-4 py-3 shadow-2xl backdrop-blur-xl">
-            <p className="font-sans-label text-sm leading-relaxed text-white/80">
+          <div className="pointer-events-auto w-full max-w-sm rounded-2xl border border-white/10 bg-ink-2/95 px-4 py-3.5 shadow-2xl backdrop-blur-xl">
+            <p className="font-sans-label text-sm leading-relaxed text-white/85">
               {isIos ? (
                 <>
-                  Add to Home Screen: tap <strong className="text-white">Share</strong> →{' '}
-                  <strong className="text-white">Add to Home Screen</strong> for the best phone experience.
+                  <strong className="text-white">Add to Home Screen</strong> for the best experience on
+                  your phone: tap the <strong className="text-white">Share</strong> button in Safari,
+                  then <strong className="text-white">Add to Home Screen</strong>.
                 </>
               ) : (
                 <>
-                  Install this app: open the browser menu → <strong className="text-white">Add to Home screen</strong> or{' '}
+                  <strong className="text-white">Install this app</strong> on your phone: open the browser
+                  menu → <strong className="text-white">Add to Home screen</strong> or{' '}
                   <strong className="text-white">Install app</strong>.
                 </>
               )}
@@ -55,7 +57,7 @@ export default function InstallHint() {
             <button
               type="button"
               onClick={dismiss}
-              className="mt-2 font-sans-label text-xs text-white/45 hover:text-white"
+              className="touch-target mt-3 font-sans-label text-sm text-white/55 hover:text-white"
             >
               Got it
             </button>

@@ -22,6 +22,10 @@ export function normalizePeople(rawPeople) {
       gender: raw.gender ?? null,
       birthYear: raw.birthYear ?? null,
       deathYear: raw.deathYear ?? null,
+      birthDate: raw.birthDate ?? null,
+      deathDate: raw.deathDate ?? null,
+      birthPlace: raw.birthPlace ?? null,
+      places: Array.isArray(raw.places) ? raw.places : [],
       photo: raw.photo || null,
       story: raw.story ?? { en: '', fr: '', ln: '', sw: '' },
       lineage: raw.lineage ?? null,
@@ -29,6 +33,9 @@ export function normalizePeople(rawPeople) {
       parentIds: [],
       childIds: [],
       siblingIds: [],
+      explicitSiblingIds: [],
+      siblingAnchorIds: [],
+      generationDepth: 0,
     }
   }
 
@@ -51,6 +58,15 @@ export function normalizePeople(rawPeople) {
         addUnique(people[childId].parentIds, id)
       }
     }
+    for (const siblingId of raw.siblings ?? []) {
+      if (people[siblingId]) {
+        addUnique(people[id].explicitSiblingIds, siblingId)
+        addUnique(people[siblingId].explicitSiblingIds, id)
+      }
+    }
+    for (const anchorId of raw.siblingAnchors ?? []) {
+      if (people[anchorId]) addUnique(people[id].siblingAnchorIds, anchorId)
+    }
   }
 
   for (const id of Object.keys(people)) {
@@ -60,7 +76,7 @@ export function normalizePeople(rawPeople) {
   }
 
   for (const id of Object.keys(people)) {
-    const siblings = new Set()
+    const siblings = new Set(people[id].explicitSiblingIds)
     for (const parentId of people[id].parentIds) {
       for (const childId of people[parentId].childIds) {
         if (childId !== id) siblings.add(childId)
@@ -69,7 +85,40 @@ export function normalizePeople(rawPeople) {
     people[id].siblingIds = [...siblings]
   }
 
+  // Generation depth: 0 for the oldest ancestors, increasing with each
+  // descending generation. Used for the warmth ramp + timeline ordering.
+  const depthCache = {}
+  const computeDepth = (id, stack) => {
+    if (depthCache[id] != null) return depthCache[id]
+    const parents = people[id].parentIds
+    if (parents.length === 0) {
+      depthCache[id] = 0
+      return 0
+    }
+    if (stack.has(id)) return 0 // cycle guard
+    stack.add(id)
+    let d = 0
+    for (const pid of parents) {
+      d = Math.max(d, computeDepth(pid, stack) + 1)
+    }
+    stack.delete(id)
+    depthCache[id] = d
+    return d
+  }
+  for (const id of Object.keys(people)) {
+    people[id].generationDepth = computeDepth(id, new Set())
+  }
+
   return people
+}
+
+/** Largest generation depth across the whole tree (0 when empty). */
+export function maxGenerationDepth(people) {
+  let max = 0
+  for (const p of Object.values(people)) {
+    if (p.generationDepth > max) max = p.generationDepth
+  }
+  return max
 }
 
 /**

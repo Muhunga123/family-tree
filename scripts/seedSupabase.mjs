@@ -100,6 +100,7 @@ async function main() {
   // Build de-duplicated relationship edges.
   const parentEdges = new Set()
   const partnerEdges = new Set()
+  const siblingEdges = new Set()
   const rels = []
 
   for (const [oldId, p] of Object.entries(people)) {
@@ -127,6 +128,14 @@ async function main() {
       if (!partnerEdges.has(key)) {
         partnerEdges.add(key)
         rels.push({ tree_id: treeId, kind: 'partner', a_id: me, b_id: idMap[partner] })
+      }
+    }
+    for (const sibling of p.siblings ?? []) {
+      if (!idMap[sibling]) continue
+      const key = [me, idMap[sibling]].sort().join('~')
+      if (!siblingEdges.has(key)) {
+        siblingEdges.add(key)
+        rels.push({ tree_id: treeId, kind: 'sibling', a_id: me, b_id: idMap[sibling] })
       }
     }
   }

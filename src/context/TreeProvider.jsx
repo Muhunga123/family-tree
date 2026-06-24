@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { getRepository, isCloudEnabled } from '../data/familyRepository'
 import { getNeighborhood } from '../utils/neighborhood'
+import { maxGenerationDepth, byBirthYear } from '../data/normalizeFamily'
+import { getDisplayName } from '../utils/personColor'
 import { TreeContext } from './treeContext'
+
+const ME_KEY = 'family-tree-me'
 
 export function TreeProvider({ children }) {
   const repo = useMemo(() => getRepository(), [])
@@ -16,6 +20,28 @@ export function TreeProvider({ children }) {
   const [searchOpen, setSearchOpen] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
   const [editorState, setEditorState] = useState(null)
+  const [viewMode, setViewMode] = useState('focus')
+  const [storyActive, setStoryActive] = useState(false)
+
+  // "How are we related?" mode.
+  const [relateMode, setRelateMode] = useState(false)
+  const [relateAnchorId, setRelateAnchorId] = useState(null)
+  const [relateTargetId, setRelateTargetId] = useState(null)
+
+  // The person the viewer identifies as (persisted), used as the relate anchor.
+  const [meId, setMeIdState] = useState(() => {
+    if (typeof localStorage === 'undefined') return null
+    return localStorage.getItem(ME_KEY) || null
+  })
+  const setMeId = useCallback((id) => {
+    setMeIdState(id)
+    try {
+      if (id) localStorage.setItem(ME_KEY, id)
+      else localStorage.removeItem(ME_KEY)
+    } catch {
+      // ignore
+    }
+  }, [])
 
   useEffect(() => {
     let active = true
@@ -77,22 +103,73 @@ export function TreeProvider({ children }) {
     if (!tree) return
     setHistory([])
     setFocusId(tree.rootId)
+    setViewMode('focus')
+    setStoryActive(false)
+    setRelateMode(false)
   }, [tree])
+
+  const startRelate = useCallback(() => {
+    setRelateMode(true)
+    setRelateTargetId(null)
+    setRelateAnchorId(meId && people[meId] ? meId : focusId)
+  }, [meId, focusId, people])
+
+  const stopRelate = useCallback(() => {
+    setRelateMode(false)
+    setRelateAnchorId(null)
+    setRelateTargetId(null)
+  }, [])
+
+  const relatePick = useCallback(
+    (id) => {
+      if (!id) return
+      if (!relateAnchorId) {
+        setRelateAnchorId(id)
+        return
+      }
+      setRelateTargetId(id)
+    },
+    [relateAnchorId],
+  )
+
+  const resetRelate = useCallback(() => {
+    setRelateAnchorId(meId && people[meId] ? meId : null)
+    setRelateTargetId(null)
+  }, [meId, people])
+
+  const relateFrom = useCallback((id) => {
+    setRelateMode(true)
+    setRelateAnchorId(id)
+    setRelateTargetId(null)
+  }, [])
 
   const openPerson = useCallback((id) => setSelectedId(id), [])
   const closePerson = useCallback(() => setSelectedId(null), [])
 
+  const canEdit =
+    !isCloudEnabled() || tree?.myRole === 'owner' || tree?.myRole === 'editor'
+
   const openEditor = useCallback(
     (state) => {
-      const isOwner = !isCloudEnabled() || tree?.myRole === 'owner'
-      if (!isOwner) return
+      if (!canEdit) return
       setEditorState(state)
     },
-    [tree?.myRole],
+    [canEdit],
   )
   const closeEditor = useCallback(() => setEditorState(null), [])
 
-  const canEdit = !isCloudEnabled() || tree?.myRole === 'owner'
+  const maxDepth = useMemo(() => maxGenerationDepth(people), [people])
+
+  const peopleList = useMemo(
+    () =>
+      Object.values(people).sort(
+        (a, b) =>
+          byBirthYear(a, b) ||
+          getDisplayName(a).localeCompare(getDisplayName(b)) ||
+          a.id.localeCompare(b.id),
+      ),
+    [people],
+  )
 
   const value = useMemo(
     () => ({
@@ -100,10 +177,12 @@ export function TreeProvider({ children }) {
       error,
       tree,
       people,
-      peopleList: Object.values(people),
+      peopleList,
       cloudEnabled: isCloudEnabled(),
       canEdit,
       myRole: tree?.myRole ?? (isCloudEnabled() ? 'viewer' : 'owner'),
+      publicAccess: tree?.publicAccess ?? false,
+      maxDepth,
       focusId,
       focusPerson,
       neighborhood,
@@ -111,6 +190,20 @@ export function TreeProvider({ children }) {
       navigateTo,
       goBack,
       goHome,
+      viewMode,
+      setViewMode,
+      storyActive,
+      setStoryActive,
+      relateMode,
+      relateAnchorId,
+      relateTargetId,
+      startRelate,
+      stopRelate,
+      relatePick,
+      resetRelate,
+      relateFrom,
+      meId,
+      setMeId,
       selectedId,
       selectedPerson: selectedId ? people[selectedId] : null,
       openPerson,
@@ -128,7 +221,15 @@ export function TreeProvider({ children }) {
         deletePerson: repo.deletePerson.bind(repo),
         linkPartners: repo.linkPartners.bind(repo),
         linkParentChild: repo.linkParentChild.bind(repo),
+        linkSiblings: repo.linkSiblings.bind(repo),
+        unlinkPartners: repo.unlinkPartners.bind(repo),
+        unlinkParentChild: repo.unlinkParentChild.bind(repo),
+        unlinkSiblings: repo.unlinkSiblings.bind(repo),
         uploadPhoto: repo.uploadPhoto.bind(repo),
+        listMemories: repo.listMemories.bind(repo),
+        addMemory: repo.addMemory.bind(repo),
+        deleteMemory: repo.deleteMemory.bind(repo),
+        setPublicAccess: repo.setPublicAccess.bind(repo),
         listMembers: repo.listMembers.bind(repo),
         listInvites: repo.listInvites.bind(repo),
         inviteMember: repo.inviteMember.bind(repo),
@@ -141,6 +242,7 @@ export function TreeProvider({ children }) {
       error,
       tree,
       people,
+      peopleList,
       focusId,
       focusPerson,
       neighborhood,
@@ -157,6 +259,19 @@ export function TreeProvider({ children }) {
       openEditor,
       closeEditor,
       canEdit,
+      viewMode,
+      storyActive,
+      relateMode,
+      relateAnchorId,
+      relateTargetId,
+      startRelate,
+      stopRelate,
+      relatePick,
+      resetRelate,
+      relateFrom,
+      meId,
+      setMeId,
+      maxDepth,
       repo,
     ],
   )
