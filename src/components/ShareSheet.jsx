@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useTree } from '../hooks/useTree'
 import { useAuth } from '../hooks/useAuth'
@@ -7,37 +7,12 @@ import { useLanguage } from '../hooks/useLanguage'
 export default function ShareSheet() {
   const { shareOpen, setShareOpen, cloudEnabled, canEdit, actions, publicAccess } =
     useTree()
-  const { user, signOut } = useAuth()
+  const { signOut } = useAuth()
   const { ui } = useLanguage()
-  const [members, setMembers] = useState([])
-  const [invites, setInvites] = useState([])
-  const [email, setEmail] = useState('')
-  const [inviteRole, setInviteRole] = useState('viewer')
-  const [busy, setBusy] = useState(false)
   const [publicBusy, setPublicBusy] = useState(false)
+  const [copied, setCopied] = useState(false)
 
-  const reload = async () => {
-    const [m, i] = await Promise.all([actions.listMembers(), actions.listInvites()])
-    setMembers(m)
-    setInvites(i)
-  }
-
-  useEffect(() => {
-    if (shareOpen && cloudEnabled) reload()
-  }, [shareOpen, cloudEnabled])
-
-  const invite = async (e) => {
-    e.preventDefault()
-    if (!email.trim() || !canEdit) return
-    setBusy(true)
-    try {
-      await actions.inviteMember(email.trim(), inviteRole)
-      setEmail('')
-      await reload()
-    } finally {
-      setBusy(false)
-    }
-  }
+  const shareUrl = typeof window !== 'undefined' ? window.location.origin : ''
 
   const togglePublic = async () => {
     setPublicBusy(true)
@@ -45,6 +20,24 @@ export default function ShareSheet() {
       await actions.setPublicAccess(!publicAccess)
     } finally {
       setPublicBusy(false)
+    }
+  }
+
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(shareUrl)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      // Fallback for older browsers
+      const input = document.createElement('input')
+      input.value = shareUrl
+      document.body.appendChild(input)
+      input.select()
+      document.execCommand('copy')
+      document.body.removeChild(input)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
     }
   }
 
@@ -112,117 +105,47 @@ export default function ShareSheet() {
                       </span>
                     </button>
                   )}
-                  {canEdit ? (
-                    <form onSubmit={invite} className="flex flex-col gap-2">
-                      <span className="font-sans-label text-[0.65rem] tracking-[0.16em] text-white/40 uppercase">
-                        Invite a relative
-                      </span>
-                      <input
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="their@email.com"
-                        className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-3 font-sans-label text-sm text-white placeholder:text-white/30 focus:border-white/25 focus:outline-none"
-                      />
-                      <div className="flex gap-1.5">
-                        {[
-                          { id: 'viewer', label: 'Can view' },
-                          { id: 'editor', label: 'Can edit' },
-                        ].map((r) => (
-                          <button
-                            key={r.id}
-                            type="button"
-                            onClick={() => setInviteRole(r.id)}
-                            className={`flex-1 rounded-xl px-3 py-2 font-sans-label text-sm transition-colors ${
-                              inviteRole === r.id
-                                ? 'bg-white text-black'
-                                : 'border border-white/10 text-white/60 hover:text-white'
-                            }`}
-                          >
-                            {r.label}
-                          </button>
-                        ))}
-                      </div>
-                      <button
-                        type="submit"
-                        disabled={busy || !email.trim()}
-                        className="rounded-xl bg-white px-4 py-3 font-sans-label text-sm font-medium text-black transition-colors hover:bg-white/90 disabled:opacity-40"
-                      >
-                        Send invite
-                      </button>
-                      <p className="font-sans-label text-[0.65rem] leading-relaxed text-white/30">
-                        Editors can add and change people. Viewers can browse, search, and add memories.
+
+                  {publicAccess ? (
+                    <div className="flex flex-col gap-3">
+                      <p className="font-sans-label text-sm leading-relaxed text-white/55">
+                        {ui('public.linkHint')}
                       </p>
-                    </form>
+                      <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-3">
+                        <span className="min-w-0 flex-1 truncate font-sans-label text-sm text-white/70">
+                          {shareUrl}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={copyLink}
+                          className="shrink-0 rounded-lg bg-white px-3 py-2 font-sans-label text-xs font-medium text-black transition-colors hover:bg-white/90"
+                        >
+                          {copied ? ui('public.copied') : ui('public.copyLink')}
+                        </button>
+                      </div>
+                      <p className="font-sans-label text-[0.65rem] leading-relaxed text-white/30">
+                        {ui('public.viewOnly')}
+                      </p>
+                    </div>
+                  ) : canEdit ? (
+                    <p className="font-sans-label text-sm leading-relaxed text-white/50">
+                      {ui('public.enableFirst')}
+                    </p>
                   ) : (
                     <p className="font-sans-label text-sm leading-relaxed text-white/50">
-                      You have view-only access. Contact the family admin to request changes.
+                      This tree is private. Ask the family admin for the link.
                     </p>
                   )}
 
-                  {members.length > 0 && (
-                    <div className="flex flex-col gap-2">
-                      <span className="font-sans-label text-[0.65rem] tracking-[0.16em] text-white/40 uppercase">
-                        Members
-                      </span>
-                      {members.map((m) => (
-                        <div key={m.user_id} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-3 py-3">
-                          <div className="flex flex-col">
-                            <span className="font-sans-label text-sm text-white/85">
-                              {m.email || m.user_id.slice(0, 8)}
-                              {m.user_id === user?.id && ' (you)'}
-                            </span>
-                            <span className="font-sans-label text-xs text-white/40 capitalize">
-                              {m.role === 'owner' ? 'admin' : m.role}
-                            </span>
-                          </div>
-                          {canEdit && m.role !== 'owner' && (
-                            <button
-                              type="button"
-                              onClick={async () => {
-                                await actions.removeMember(m.user_id)
-                                await reload()
-                              }}
-                              className="font-sans-label text-xs text-rose-300/80 hover:text-rose-300"
-                            >
-                              Remove
-                            </button>
-                          )}
-                        </div>
-                      ))}
-                    </div>
+                  {canEdit && (
+                    <button
+                      type="button"
+                      onClick={signOut}
+                      className="mt-2 rounded-xl border border-white/10 px-4 py-3.5 font-sans-label text-sm text-white/70 transition-colors hover:bg-white/5"
+                    >
+                      {ui('action.signOut')}
+                    </button>
                   )}
-
-                  {canEdit && invites.length > 0 && (
-                    <div className="flex flex-col gap-2">
-                      <span className="font-sans-label text-[0.65rem] tracking-[0.16em] text-white/40 uppercase">
-                        Pending invites
-                      </span>
-                      {invites.map((i) => (
-                        <div key={i.id} className="flex items-center justify-between rounded-xl border border-dashed border-white/10 px-3 py-3">
-                          <span className="font-sans-label text-sm text-white/70">{i.email}</span>
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              await actions.removeInvite(i.id)
-                              await reload()
-                            }}
-                            className="font-sans-label text-xs text-white/40 hover:text-white"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  <button
-                    type="button"
-                    onClick={signOut}
-                    className="mt-2 rounded-xl border border-white/10 px-4 py-3.5 font-sans-label text-sm text-white/70 transition-colors hover:bg-white/5"
-                  >
-                    {ui('action.signOut')}
-                  </button>
                 </>
               )}
             </div>
