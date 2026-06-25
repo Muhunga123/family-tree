@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import { useTree } from '../hooks/useTree'
 import { useLanguage } from '../hooks/useLanguage'
 import { useViewportFitPadding } from '../hooks/useViewportFitPadding'
-import { useTreeViewport } from '../hooks/useTreeViewport'
+import { useTreeViewport, viewportTransformStyle } from '../hooks/useTreeViewport'
 import { buildTimeline } from '../utils/timelineLayout'
 import { lifespanLabel } from '../utils/neighborhood'
 import { getDisplayName } from '../utils/personColor'
@@ -21,7 +21,7 @@ export default function TimelineCanvas() {
   const fitPadding = useViewportFitPadding()
 
   const layout = useMemo(() => buildTimeline(people), [people])
-  const { viewportRef, transform, zoomIn, zoomOut, resetView, handlers } =
+  const { viewportRef, transform, suppressClickRef, zoomIn, zoomOut, resetView, handlers } =
     useTreeViewport(contentRef, { width: WIDTH, height: layout.height }, { fitPadding })
 
   useEffect(() => {
@@ -45,13 +45,7 @@ export default function TimelineCanvas() {
         style={{ touchAction: 'none' }}
         {...handlers}
       >
-        <div
-          style={{
-            transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})`,
-            transformOrigin: '0 0',
-            width: 'max-content',
-          }}
-        >
+        <div style={viewportTransformStyle(transform)}>
           <div
             ref={contentRef}
             className="relative"
@@ -90,13 +84,16 @@ export default function TimelineCanvas() {
                 <button
                   key={person.id}
                   type="button"
-                  onClick={() => handleTap(person.id)}
+                  onClick={() => {
+                    if (suppressClickRef?.current) return
+                    handleTap(person.id)
+                  }}
                   className="absolute flex items-center gap-3 rounded-2xl px-2 py-1.5 text-left outline-none transition-colors hover:bg-white/5"
                   style={{ left: RAIL_X - 22, top: row.y - 22, width: WIDTH - RAIL_X + 12 }}
                 >
-                  <PersonAvatar person={person} size={44} />
+                  <PersonAvatar person={person} size={48} />
                   <span className="flex min-w-0 flex-col">
-                    <span className="truncate font-serif-display text-[0.95rem] text-white">
+                    <span className="truncate font-serif-display text-base text-white sm:text-[0.95rem]">
                       {getDisplayName(person, t(person.role))}
                     </span>
                     <span className="font-sans-label text-[0.65rem] text-white/45">

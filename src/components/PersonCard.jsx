@@ -3,7 +3,8 @@ import { motion } from 'motion/react'
 import { useLanguage } from '../hooks/useLanguage'
 import { lifespanLabel } from '../utils/neighborhood'
 import { getDisplayName } from '../utils/personColor'
-import { SLOT } from '../utils/lineageLayout'
+import { getLineageMetrics } from '../utils/lineageLayout'
+import { isNarrowViewport } from '../utils/mobileChrome'
 import PersonAvatar from './PersonAvatar'
 
 const SIZES = {
@@ -24,12 +25,14 @@ export default forwardRef(function PersonCard(
     maxDepth = 0,
     dimmed = false,
     highlighted = false,
+    suppressClickRef,
   },
   avatarRef,
 ) {
   const { t } = useLanguage()
   const size = SIZES[variant] ?? SIZES.default
-  const slot = SLOT[variant] ?? SLOT.default
+  const slot = getLineageMetrics().SLOT[variant] ?? getLineageMetrics().SLOT.default
+  const narrow = isNarrowViewport()
   const displayName = getDisplayName(person, t(person.role))
   const role = t(person.role)
   const lifespan = lifespanLabel(person)
@@ -56,17 +59,19 @@ export default forwardRef(function PersonCard(
           </span>
         )}
         <span
-          className={`line-clamp-2 font-serif-display leading-tight text-white ${size.name}`}
+          className={`line-clamp-2 font-serif-display leading-tight text-white ${
+            positioned && narrow ? 'text-[0.82rem]' : size.name
+          }`}
         >
           {displayName}
         </span>
         {lifespan && (
-          <span className="font-sans-label text-[0.65rem] text-white/45">
+          <span className={`font-sans-label text-white/45 ${positioned && narrow ? 'text-[0.68rem]' : 'text-[0.65rem]'}`}>
             {lifespan}
           </span>
         )}
         {role && !label && (
-          <span className="line-clamp-1 font-sans-label text-[0.6rem] tracking-[0.14em] text-white/35 [font-variant-caps:small-caps]">
+          <span className={`line-clamp-1 font-sans-label tracking-[0.14em] text-white/35 [font-variant-caps:small-caps] ${positioned && narrow ? 'text-[0.62rem]' : 'text-[0.6rem]'}`}>
             {role}
           </span>
         )}
@@ -93,7 +98,10 @@ export default forwardRef(function PersonCard(
     return (
       <button
         type="button"
-        onClick={() => onTap?.(person.id)}
+        onClick={() => {
+          if (suppressClickRef?.current) return
+          onTap?.(person.id)
+        }}
         onContextMenu={(e) => {
           if (onLongPress) {
             e.preventDefault()

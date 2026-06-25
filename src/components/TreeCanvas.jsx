@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { useTree } from '../hooks/useTree'
-import { useTreeViewport } from '../hooks/useTreeViewport'
+import { useTreeViewport, viewportTransformStyle } from '../hooks/useTreeViewport'
 import { useViewportFitPadding } from '../hooks/useViewportFitPadding'
-import { buildLineageLayout } from '../utils/lineageLayout'
+import { buildLineageLayout, getLineageMetrics } from '../utils/lineageLayout'
+import { isNarrowViewport } from '../utils/mobileChrome'
 import { findKinshipPath } from '../utils/kinship'
 import PersonCard from './PersonCard'
 import ZoomControls from './ZoomControls'
@@ -27,7 +28,7 @@ export default function TreeCanvas() {
 
   const layout = useMemo(
     () => (neighborhood ? buildLineageLayout(neighborhood) : null),
-    [neighborhood],
+    [neighborhood, fitPadding.top],
   )
 
   const relatePathSet = useMemo(() => {
@@ -36,16 +37,31 @@ export default function TreeCanvas() {
     return result ? new Set(result.path) : null
   }, [relateMode, relateAnchorId, relateTargetId, people])
 
-  const { viewportRef, transform, zoomIn, zoomOut, resetView, handlers } =
+  const { viewportRef, transform, suppressClickRef, zoomIn, zoomOut, resetView, focusRect, handlers } =
     useTreeViewport(contentRef, {
       width: layout?.width ?? 0,
       height: layout?.height ?? 0,
     }, { fitPadding })
 
   useEffect(() => {
-    const id = requestAnimationFrame(resetView)
+    if (!layout) return
+    const id = requestAnimationFrame(() => {
+      if (isNarrowViewport()) {
+        const focal = layout.nodes.find((n) => n.role === 'focal')
+        if (focal) {
+          const slot = getLineageMetrics().SLOT.focal
+          focusRect(
+            { x: focal.x - 12, y: focal.y - 12, w: slot.cardW + 24, h: slot.cardH + 24 },
+            0.88,
+            { duration: 380 },
+          )
+          return
+        }
+      }
+      resetView()
+    })
     return () => cancelAnimationFrame(id)
-  }, [focusId, layout?.width, layout?.height, resetView])
+  }, [focusId, layout?.width, layout?.height, resetView, focusRect])
 
   if (!neighborhood || !layout) {
     return (
@@ -68,20 +84,12 @@ export default function TreeCanvas() {
         style={{ touchAction: 'none' }}
         {...handlers}
       >
-        <div
-          style={{
-            transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})`,
-            transformOrigin: '0 0',
-            width: 'max-content',
-          }}
-        >
+        <div style={viewportTransformStyle(transform)}>
           <div
             ref={contentRef}
             className="relative"
             style={{ width: layout.width, height: layout.height }}
           >
-            {/* Connectors — drawn first, behind nodes. Keyed by focus so the
-                rails gently light up each time you navigate. */}
             <svg
               key={focusId}
               className="connector-layer pointer-events-none absolute inset-0 overflow-visible"
@@ -103,7 +111,6 @@ export default function TreeCanvas() {
               ))}
             </svg>
 
-            {/* Nodes — absolute positions from layout engine */}
             {layout.nodes.map((node) => (
               <PersonCard
                 key={node.id}
@@ -116,6 +123,7 @@ export default function TreeCanvas() {
                   relateMode &&
                   (node.id === relateAnchorId || node.id === relateTargetId)
                 }
+                suppressClickRef={suppressClickRef}
                 style={{ left: node.x, top: node.y }}
                 onTap={
                   !relateMode && node.role === 'focal' ? openPerson : handleTap

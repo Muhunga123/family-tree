@@ -2,7 +2,7 @@ import { useMemo, useRef, useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useTree } from '../hooks/useTree'
 import { useLanguage } from '../hooks/useLanguage'
-import { useTreeViewport } from '../hooks/useTreeViewport'
+import { useTreeViewport, viewportTransformStyle } from '../hooks/useTreeViewport'
 import { buildFullLayout, NODE_W, NODE_H } from '../utils/fullTreeLayout'
 import { findKinshipPath } from '../utils/kinship'
 import { lifespanLabel } from '../utils/neighborhood'
@@ -12,7 +12,7 @@ import { useViewportFitPadding } from '../hooks/useViewportFitPadding'
 import PersonAvatar from './PersonAvatar'
 import ZoomControls from './ZoomControls'
 
-function OverviewNode({ node, isFocal, onTap, t, maxDepth, dimmed, highlighted }) {
+function OverviewNode({ node, isFocal, onTap, t, maxDepth, dimmed, highlighted, suppressClickRef }) {
   const { person, x, y } = node
   const displayName = getDisplayName(person, t(person.role))
   const lifespan = lifespanLabel(person)
@@ -20,7 +20,10 @@ function OverviewNode({ node, isFocal, onTap, t, maxDepth, dimmed, highlighted }
   return (
     <motion.button
       type="button"
-      onClick={() => onTap(person.id)}
+      onClick={() => {
+        if (suppressClickRef?.current) return
+        onTap(person.id)
+      }}
       initial={{ opacity: 0, scale: 0.85 }}
       animate={{ opacity: dimmed ? 0.25 : 1, scale: 1 }}
       transition={{ type: 'spring', stiffness: 260, damping: 24 }}
@@ -37,7 +40,7 @@ function OverviewNode({ node, isFocal, onTap, t, maxDepth, dimmed, highlighted }
       />
 
       <span className="mt-2 flex w-full flex-col items-center gap-0.5 text-center">
-        <span className="line-clamp-2 font-serif-display text-[0.82rem] leading-tight text-white sm:text-[0.92rem]">
+        <span className="line-clamp-2 font-serif-display text-[0.88rem] leading-tight text-white sm:text-[0.92rem]">
           {displayName}
         </span>
         {lifespan && (
@@ -67,7 +70,7 @@ export default function OverviewCanvas() {
   const topPad = fitPadding.top
 
   const layout = useMemo(() => buildFullLayout(people), [people])
-  const { viewportRef, transform, zoomIn, zoomOut, resetView, focusRect, handlers } =
+  const { viewportRef, transform, suppressClickRef, zoomIn, zoomOut, resetView, focusRect, handlers } =
     useTreeViewport(
       contentRef,
       {
@@ -155,13 +158,7 @@ export default function OverviewCanvas() {
         style={{ touchAction: 'none' }}
         {...handlers}
       >
-        <div
-          style={{
-            transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})`,
-            transformOrigin: '0 0',
-            width: 'max-content',
-          }}
-        >
+        <div style={viewportTransformStyle(transform)}>
           <div
             ref={contentRef}
             className="relative"
@@ -226,6 +223,7 @@ export default function OverviewCanvas() {
                   relateMode &&
                   (node.id === relateAnchorId || node.id === relateTargetId)
                 }
+                suppressClickRef={suppressClickRef}
               />
             ))}
           </div>

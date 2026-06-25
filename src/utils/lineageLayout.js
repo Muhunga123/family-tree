@@ -1,21 +1,42 @@
 import { byBirthYear } from '../data/normalizeFamily'
+import { isNarrowViewport } from './mobileChrome'
 import { hline, snap, vline } from './svgGeometry'
 
 /**
  * Lineage view layout — every node position and connector is computed from
  * fixed geometry (no DOM measurement), so lines remain consistently aligned.
  */
-export const SLOT = {
-  default: { cardW: 96, cardH: 148, pad: 8, avatar: 64, textH: 68 },
-  focal: { cardW: 128, cardH: 168, pad: 8, avatar: 96, textH: 68 },
+const DESKTOP = {
+  SLOT: {
+    default: { cardW: 96, cardH: 148, pad: 8, avatar: 64, textH: 68 },
+    focal: { cardW: 128, cardH: 168, pad: 8, avatar: 96, textH: 68 },
+  },
+  SLOT_GAP: 20,
+  ROW_GAP: 84,
+  PAD: { top: 132, bottom: 56, x: 56 },
 }
 
-const SLOT_GAP = 20
-const ROW_GAP = 84
-const PAD = { top: 132, bottom: 56, x: 56 }
-const LINK_Y_FROM_AVATAR_TOP = SLOT.default.avatar / 2 // keeps mixed-size rows level
+const MOBILE = {
+  SLOT: {
+    default: { cardW: 100, cardH: 158, pad: 6, avatar: 62, textH: 82 },
+    focal: { cardW: 118, cardH: 172, pad: 6, avatar: 80, textH: 82 },
+  },
+  SLOT_GAP: 10,
+  ROW_GAP: 56,
+  // Chrome padding is handled by the viewport — keep layout padding minimal.
+  PAD: { top: 16, bottom: 28, x: 24 },
+}
+
+export const SLOT = DESKTOP.SLOT
+
+export function getLineageMetrics() {
+  return isNarrowViewport() ? MOBILE : DESKTOP
+}
+
+const LINK_Y_FROM_AVATAR_TOP = DESKTOP.SLOT.default.avatar / 2
 
 function slotOf(variant = 'default') {
+  const { SLOT } = getLineageMetrics()
   return SLOT[variant] ?? SLOT.default
 }
 
@@ -24,6 +45,7 @@ function cardW(variant) {
 }
 
 function widthFor(items) {
+  const { SLOT_GAP } = getLineageMetrics()
   return items.reduce(
     (sum, item, i) => sum + cardW(item.variant) + (i > 0 ? SLOT_GAP : 0),
     0,
@@ -44,7 +66,7 @@ export function avatarAnchor(node) {
   const topY = avatarTop
   const botY = snap(avatarTop + s.avatar)
   const midY = snap(avatarTop + s.avatar / 2)
-  const linkY = snap(avatarTop + LINK_Y_FROM_AVATAR_TOP)
+  const linkY = snap(avatarTop + s.avatar / 2)
   return { cx, topY, botY, midY, linkY, topX: cx, botX: cx }
 }
 
@@ -77,7 +99,6 @@ function buildPaths(nodes) {
   const partners = byRole('partner')
   const children = byRole('child')
 
-  // Focal + partners relation rail (single clean rail).
   if (partners.length > 0) {
     const couple = [focalA, ...partners.map(anchor)]
     const y = snap(couple.reduce((s, a) => s + a.linkY, 0) / couple.length)
@@ -85,7 +106,6 @@ function buildPaths(nodes) {
     paths.push(hline(Math.min(...xs), Math.max(...xs), y))
   }
 
-  // Focal ↔ siblings rail (essential when siblings don't share parents).
   if (siblings.length > 0) {
     const group = [...siblings.map(anchor), focalA]
     const y = snap(group.reduce((s, a) => s + a.linkY, 0) / group.length)
@@ -93,7 +113,6 @@ function buildPaths(nodes) {
     paths.push(hline(Math.min(...xs), Math.max(...xs), y))
   }
 
-  // Parents -> focal/siblings.
   const parentTargets = [focal, ...siblings].map(anchor)
   if (parents.length > 0 && parentTargets.length > 0) {
     if (parents.length >= 2) {
@@ -108,7 +127,6 @@ function buildPaths(nodes) {
     }
   }
 
-  // Focal couple -> children.
   if (children.length > 0) {
     const childAnchors = children.map(anchor)
     const coupleAnchors = [focalA, ...partners.map(anchor)]
@@ -125,6 +143,7 @@ function buildPaths(nodes) {
 }
 
 function placeCenteredRow(items, y, centerX) {
+  const { SLOT_GAP } = getLineageMetrics()
   const rowW = widthFor(items)
   let x = centerX - rowW / 2
   return items.map((item) => {
@@ -136,11 +155,11 @@ function placeCenteredRow(items, y, centerX) {
 }
 
 function placeFocalRow({ siblings, focal, partners, y, centerX }) {
+  const { SLOT_GAP } = getLineageMetrics()
   const focalW = cardW('focal')
   const focalX = centerX - focalW / 2
   const nodes = []
 
-  // siblings placed from focal outward to the left
   let leftX = focalX
   for (let i = siblings.length - 1; i >= 0; i--) {
     leftX -= SLOT_GAP + cardW('default')
@@ -163,7 +182,6 @@ function placeFocalRow({ siblings, focal, partners, y, centerX }) {
     y: snap(y),
   })
 
-  // partners placed from focal outward to the right
   let rightX = focalX + focalW + SLOT_GAP
   for (const p of partners) {
     nodes.push({
@@ -184,6 +202,7 @@ function placeFocalRow({ siblings, focal, partners, y, centerX }) {
  * Compute absolute positions for every person in the focal neighborhood.
  */
 export function buildLineageLayout(neighborhood) {
+  const { SLOT, ROW_GAP, PAD } = getLineageMetrics()
   const focal = neighborhood.focal
   const parents = sortPeople(neighborhood.parents)
   const siblings = sortPeople(neighborhood.siblings)
@@ -193,6 +212,7 @@ export function buildLineageLayout(neighborhood) {
   const parentItems = parents.map((p) => ({ person: p, role: 'parent', id: p.id }))
   const childItems = children.map((p) => ({ person: p, role: 'child', id: p.id }))
 
+  const { SLOT_GAP } = getLineageMetrics()
   const focalRowLeft =
     siblings.length * cardW('default') + Math.max(0, siblings.length) * SLOT_GAP + cardW('focal') / 2
   const focalRowRight =
@@ -203,7 +223,7 @@ export function buildLineageLayout(neighborhood) {
     focalRowRight,
     widthFor(parentItems) / 2,
     widthFor(childItems) / 2,
-    180,
+    isNarrowViewport() ? 140 : 180,
   )
   const centerX = PAD.x + halfCore
   const canvasW = snap(centerX * 2)
