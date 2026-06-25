@@ -23,7 +23,7 @@ alter table public.relationships
   check (kind in ('parent', 'partner', 'sibling'));
 
 -- ---------------------------------------------------------------------------
--- 2. Memories — short notes any family member can leave on a person
+-- 2. Memories — notes on a person (owner adds/edits; everyone can read when public)
 -- ---------------------------------------------------------------------------
 create table if not exists public.memories (
   id uuid primary key default gen_random_uuid(),
@@ -51,50 +51,50 @@ create policy memories_select on public.memories for select
 
 drop policy if exists memories_insert on public.memories;
 create policy memories_insert on public.memories for insert
-  with check (public.is_tree_member(tree_id));
+  with check (public.is_tree_owner(tree_id));
 
 drop policy if exists memories_delete on public.memories;
 create policy memories_delete on public.memories for delete
-  using (public.is_tree_owner(tree_id) or created_by = auth.uid());
+  using (public.is_tree_owner(tree_id));
 
 -- ---------------------------------------------------------------------------
--- 3. Let editors (not just the owner) add/edit people + relationships
+-- 3. Owner-only edits for people + relationships
 -- ---------------------------------------------------------------------------
 drop policy if exists people_insert on public.people;
 create policy people_insert on public.people for insert
-  with check (public.is_tree_editor(tree_id));
+  with check (public.is_tree_owner(tree_id));
 
 drop policy if exists people_update on public.people;
 create policy people_update on public.people for update
-  using (public.is_tree_editor(tree_id)) with check (public.is_tree_editor(tree_id));
+  using (public.is_tree_owner(tree_id)) with check (public.is_tree_owner(tree_id));
 
 drop policy if exists people_delete on public.people;
 create policy people_delete on public.people for delete
-  using (public.is_tree_editor(tree_id));
+  using (public.is_tree_owner(tree_id));
 
 drop policy if exists relationships_insert on public.relationships;
 create policy relationships_insert on public.relationships for insert
-  with check (public.is_tree_editor(tree_id));
+  with check (public.is_tree_owner(tree_id));
 
 drop policy if exists relationships_delete on public.relationships;
 create policy relationships_delete on public.relationships for delete
-  using (public.is_tree_editor(tree_id));
+  using (public.is_tree_owner(tree_id));
 
 -- ---------------------------------------------------------------------------
--- 4. Editors may also upload photos (previously owner-only)
+-- 4. Owner-only photo uploads
 -- ---------------------------------------------------------------------------
 drop policy if exists photos_write on storage.objects;
 create policy photos_write on storage.objects for insert to authenticated
   with check (
     bucket_id = 'photos'
-    and public.is_tree_editor((storage.foldername(name))[1]::uuid)
+    and public.is_tree_owner((storage.foldername(name))[1]::uuid)
   );
 
 drop policy if exists photos_update on storage.objects;
 create policy photos_update on storage.objects for update to authenticated
   using (
     bucket_id = 'photos'
-    and public.is_tree_editor((storage.foldername(name))[1]::uuid)
+    and public.is_tree_owner((storage.foldername(name))[1]::uuid)
   );
 
 -- ---------------------------------------------------------------------------

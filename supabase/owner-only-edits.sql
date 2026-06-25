@@ -1,5 +1,5 @@
 -- Run this in Supabase SQL Editor if you already ran schema.sql earlier.
--- Locks add/edit/delete to the tree owner (admin) only. Everyone else is view-only.
+-- Locks all writes to the tree owner (admin) only. Everyone else is view-only.
 
 drop policy if exists people_insert on public.people;
 create policy people_insert on public.people for insert
@@ -19,6 +19,14 @@ create policy relationships_insert on public.relationships for insert
 
 drop policy if exists relationships_delete on public.relationships;
 create policy relationships_delete on public.relationships for delete
+  using (public.is_tree_owner(tree_id));
+
+drop policy if exists memories_insert on public.memories;
+create policy memories_insert on public.memories for insert
+  with check (public.is_tree_owner(tree_id));
+
+drop policy if exists memories_delete on public.memories;
+create policy memories_delete on public.memories for delete
   using (public.is_tree_owner(tree_id));
 
 drop policy if exists photos_write on storage.objects;
@@ -42,5 +50,5 @@ create policy photos_delete on storage.objects for delete to authenticated
     and public.is_tree_owner((storage.foldername(name))[1]::uuid)
   );
 
--- Optional: downgrade any existing editors to viewers (owner keeps owner role).
+-- Downgrade any existing editors to viewers (owner keeps owner role).
 update public.tree_members set role = 'viewer' where role = 'editor';

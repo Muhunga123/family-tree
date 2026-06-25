@@ -146,8 +146,7 @@ export function TreeProvider({ children }) {
   const openPerson = useCallback((id) => setSelectedId(id), [])
   const closePerson = useCallback(() => setSelectedId(null), [])
 
-  const canEdit =
-    !isCloudEnabled() || tree?.myRole === 'owner' || tree?.myRole === 'editor'
+  const canEdit = !isCloudEnabled() || tree?.myRole === 'owner'
 
   const openEditor = useCallback(
     (state) => {

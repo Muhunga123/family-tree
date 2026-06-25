@@ -46,13 +46,15 @@ export default function MemoriesPanel({ personId }) {
         <h3 className="font-sans-label text-[0.65rem] tracking-[0.18em] text-white/35 uppercase">
           {ui('label.memories')}
         </h3>
-        <button
-          type="button"
-          onClick={() => setOpen((v) => !v)}
-          className="font-sans-label text-xs text-white/55 hover:text-white"
-        >
-          {ui('memory.add')}
-        </button>
+        {canEdit && (
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            className="font-sans-label text-xs text-white/55 hover:text-white"
+          >
+            {ui('memory.add')}
+          </button>
+        )}
       </div>
 
       {open && (
