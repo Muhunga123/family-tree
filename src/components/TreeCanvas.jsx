@@ -1,14 +1,19 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTree } from '../hooks/useTree'
 import { useTreeViewport, viewportTransformStyle } from '../hooks/useTreeViewport'
 import { useViewportFitPadding } from '../hooks/useViewportFitPadding'
-import { buildLineageLayout, getLineageMetrics } from '../utils/lineageLayout'
+import { buildLineageLayout, focalRect, layoutBounds } from '../utils/lineageLayout'
 import { isNarrowViewport } from '../utils/mobileChrome'
+import { initialFitMs, navDurationMs } from '../utils/motion'
 import { findKinshipPath } from '../utils/kinship'
 import PersonCard from './PersonCard'
 import ZoomControls from './ZoomControls'
 
-const LINE = 'rgba(255,255,255,0.30)'
+const LINE = 'rgba(255,255,255,0.34)'
+
+/** Initial home framing — default ~90% zoom. */
+const HOME_FIT = { margin: 20, padding: 0.9 }
+const NAV_FIT = { margin: 16, padding: 0.88 }
 
 export default function TreeCanvas() {
   const {
@@ -25,10 +30,26 @@ export default function TreeCanvas() {
   } = useTree()
   const contentRef = useRef(null)
   const fitPadding = useViewportFitPadding()
+  const lastFitKey = useRef('')
+  const hasNavigated = useRef(false)
+  const tapAnchorRef = useRef(null)
+
+  const layoutSizeKey = useMemo(() => {
+    if (!neighborhood) return ''
+    const n = neighborhood
+    return [
+      focusId,
+      n.parents.map((p) => p.id).join(','),
+      n.siblings.map((p) => p.id).join(','),
+      n.partners.map((p) => p.id).join(','),
+      n.children.map((p) => p.id).join(','),
+    ].join('|')
+  }, [neighborhood, focusId])
 
   const layout = useMemo(
     () => (neighborhood ? buildLineageLayout(neighborhood) : null),
-    [neighborhood, fitPadding.top],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [layoutSizeKey],
   )
 
   const relatePathSet = useMemo(() => {
@@ -37,31 +58,115 @@ export default function TreeCanvas() {
     return result ? new Set(result.path) : null
   }, [relateMode, relateAnchorId, relateTargetId, people])
 
-  const { viewportRef, transform, suppressClickRef, zoomIn, zoomOut, resetView, focusRect, handlers } =
-    useTreeViewport(contentRef, {
+  const {
+    viewportRef,
+    transformLayerRef,
+    transform,
+    suppressClickRef,
+    interactingRef,
+    zoomIn,
+    zoomOut,
+    resetView,
+    focusRect,
+    computeFitTransform,
+    glideFromScreen,
+    handlers,
+  } = useTreeViewport(
+    contentRef,
+    {
       width: layout?.width ?? 0,
       height: layout?.height ?? 0,
-    }, { fitPadding })
+    },
+    { fitPadding, autoFit: false },
+  )
 
-  useEffect(() => {
-    if (!layout) return
-    const id = requestAnimationFrame(() => {
-      if (isNarrowViewport()) {
-        const focal = layout.nodes.find((n) => n.role === 'focal')
-        if (focal) {
-          const slot = getLineageMetrics().SLOT.focal
-          focusRect(
-            { x: focal.x - 12, y: focal.y - 12, w: slot.cardW + 24, h: slot.cardH + 24 },
-            0.88,
-            { duration: 380 },
-          )
-          return
-        }
+  const recordTap = useCallback(
+    (id, e) => {
+      const viewport = viewportRef.current
+      if (!viewport || !e) return
+      const rect = viewport.getBoundingClientRect()
+      tapAnchorRef.current = {
+        personId: id,
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
       }
-      resetView()
+    },
+    [viewportRef],
+  )
+
+  const centerTree = useCallback(
+    (bounds, focal, opts = {}) => {
+      if (!bounds) {
+        resetView()
+        return
+      }
+      focusRect(
+        {
+          x: bounds.x + bounds.w / 2,
+          y: bounds.y + bounds.h / 2,
+          w: 0,
+          h: 0,
+        },
+        undefined,
+        { ...opts, bounds, focalBias: 0 },
+      )
+    },
+    [focusRect, resetView],
+  )
+
+  // Camera glide — FLIP handoff keeps the tapped person visually anchored.
+  useEffect(() => {
+    if (!layout || interactingRef.current) return
+    const key = `${layoutSizeKey}:${layout.width}x${layout.height}`
+    if (lastFitKey.current === key) return
+
+    const isNavigation = hasNavigated.current
+    const duration = isNavigation ? navDurationMs() : initialFitMs()
+
+    const bounds = layoutBounds(layout)
+    const focal = focalRect(layout, focusId)
+    const anchor = tapAnchorRef.current
+    tapAnchorRef.current = null
+
+    const glideOpts = {
+      ...(isNavigation ? NAV_FIT : HOME_FIT),
+      duration,
+      ease: 'luxe',
+    }
+
+    const id = requestAnimationFrame(() => {
+      if (lastFitKey.current === key) return
+      lastFitKey.current = key
+      if (!isNavigation) hasNavigated.current = true
+
+      if (!bounds) {
+        resetView()
+        return
+      }
+
+      if (isNavigation && anchor?.personId === focusId && focal) {
+        const center = {
+          x: focal.x + focal.w / 2,
+          y: focal.y + focal.h / 2,
+        }
+        const target = computeFitTransform(bounds, focal, glideOpts)
+        if (!target) return
+        glideFromScreen({ x: anchor.x, y: anchor.y }, center, target, glideOpts)
+      } else {
+        centerTree(bounds, focal, glideOpts)
+      }
     })
     return () => cancelAnimationFrame(id)
-  }, [focusId, layout?.width, layout?.height, resetView, focusRect])
+  }, [
+    layoutSizeKey,
+    layout,
+    focusId,
+    centerTree,
+    computeFitTransform,
+    glideFromScreen,
+    resetView,
+    interactingRef,
+  ])
 
   if (!neighborhood || !layout) {
     return (
@@ -71,9 +176,33 @@ export default function TreeCanvas() {
     )
   }
 
-  const handleTap = (id) => {
-    if (relateMode) relatePick(id)
-    else navigateTo(id)
+  const handleTap = (id, e) => {
+    if (relateMode) {
+      relatePick(id)
+      return
+    }
+    recordTap(id, e)
+    navigateTo(id)
+  }
+
+  const handleFocalTap = (id, e) => {
+    if (relateMode) {
+      relatePick(id)
+      return
+    }
+    recordTap(id, e)
+    openPerson(id)
+  }
+
+  const handleFit = () => {
+    const bounds = layoutBounds(layout)
+    if (bounds) {
+      centerTree(bounds, focalRect(layout, focusId), {
+        ...NAV_FIT,
+        duration: isNarrowViewport() ? 620 : 720,
+        ease: 'luxe',
+      })
+    } else resetView()
   }
 
   return (
@@ -81,17 +210,16 @@ export default function TreeCanvas() {
       <div
         ref={viewportRef}
         className="h-full w-full cursor-grab overflow-hidden active:cursor-grabbing"
-        style={{ touchAction: 'none' }}
+        style={{ touchAction: 'none', isolation: 'isolate' }}
         {...handlers}
       >
-        <div style={viewportTransformStyle(transform)}>
+        <div ref={transformLayerRef} style={viewportTransformStyle(transform)}>
           <div
             ref={contentRef}
             className="relative"
             style={{ width: layout.width, height: layout.height }}
           >
             <svg
-              key={focusId}
               className="connector-layer pointer-events-none absolute inset-0 overflow-visible"
               width={layout.width}
               height={layout.height}
@@ -126,7 +254,7 @@ export default function TreeCanvas() {
                 suppressClickRef={suppressClickRef}
                 style={{ left: node.x, top: node.y }}
                 onTap={
-                  !relateMode && node.role === 'focal' ? openPerson : handleTap
+                  !relateMode && node.role === 'focal' ? handleFocalTap : handleTap
                 }
               />
             ))}
@@ -138,7 +266,7 @@ export default function TreeCanvas() {
         scale={transform.scale}
         zoomIn={zoomIn}
         zoomOut={zoomOut}
-        resetView={resetView}
+        resetView={handleFit}
       />
     </div>
   )

@@ -53,7 +53,6 @@ function alignExplicitSiblings(people, units, unitOf, placed, unitChildren, unit
       shiftUnitDepth(satelliteUid, depthDelta, unitChildren, placed)
     }
 
-    const refreshedAnchor = placed.get(anchorUid)
     const refreshedSatellite = placed.get(satelliteUid)
     const anchorLeft = anchorPersonLeft(anchorPersonId, anchorUid, placed, units)
 
@@ -171,7 +170,7 @@ export function buildFullLayout(people) {
       x = leftBound
     } else {
       let childLeft = leftBound
-      let right = leftBound
+      let right
       const centers = []
       for (const k of kids) {
         right = layout(k, depth + 1, childLeft)

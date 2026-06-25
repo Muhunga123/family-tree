@@ -21,13 +21,16 @@ export default function TimelineCanvas() {
   const fitPadding = useViewportFitPadding()
 
   const layout = useMemo(() => buildTimeline(people), [people])
-  const { viewportRef, transform, suppressClickRef, zoomIn, zoomOut, resetView, handlers } =
+  const { viewportRef, transformLayerRef, transform, suppressClickRef, zoomIn, zoomOut, resetView, handlers } =
     useTreeViewport(contentRef, { width: WIDTH, height: layout.height }, { fitPadding })
 
   useEffect(() => {
+    if (layout.height <= 0) return
     const id = requestAnimationFrame(resetView)
     return () => cancelAnimationFrame(id)
-  }, [layout.height, resetView])
+    // Only re-fit when timeline height changes, not every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [layout.height])
 
   if (layout.count === 0) {
     return (
@@ -42,10 +45,10 @@ export default function TimelineCanvas() {
       <div
         ref={viewportRef}
         className="h-full w-full cursor-grab overflow-hidden active:cursor-grabbing"
-        style={{ touchAction: 'none' }}
+        style={{ touchAction: 'none', isolation: 'isolate' }}
         {...handlers}
       >
-        <div style={viewportTransformStyle(transform)}>
+        <div ref={transformLayerRef} style={viewportTransformStyle(transform)}>
           <div
             ref={contentRef}
             className="relative"
@@ -84,6 +87,7 @@ export default function TimelineCanvas() {
                 <button
                   key={person.id}
                   type="button"
+                  onPointerDown={(e) => e.stopPropagation()}
                   onClick={() => {
                     if (suppressClickRef?.current) return
                     handleTap(person.id)

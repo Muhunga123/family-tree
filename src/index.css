@@ -70,24 +70,55 @@ body {
   }
 }
 
-/* Connector rails gently fade/light up each time the lineage view changes. */
-.connector-layer {
-  animation: connector-in 0.55s ease-out both;
+/* Lineage cards — opacity/transform only; position is camera-driven. */
+.lineage-card {
+  transition:
+    opacity 0.55s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
 }
 
-@keyframes connector-in {
-  from {
-    opacity: 0;
+/* Focal person sits above siblings so the bulb glow blooms freely. */
+.lineage-card-focal {
+  z-index: 12;
+}
+
+/* Accent-colored bulb halos on the focused lineage person. */
+.avatar-bulb-outer {
+  animation: bulb-breathe 4.2s ease-in-out infinite;
+}
+
+.avatar-bulb-mid {
+  animation: bulb-breathe 4.2s ease-in-out infinite;
+  animation-delay: -1.4s;
+}
+
+@keyframes bulb-breathe {
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: scale(1);
   }
-  to {
-    opacity: 1;
+  50% {
+    opacity: 0.72;
+    transform: scale(1.04);
   }
+}
+
+/* Connector rails — camera glide carries the motion. */
+.connector-layer {
+  will-change: opacity;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ambient-bg,
-  .connector-layer {
+  .ambient-bg {
     animation: none;
+  }
+
+  .avatar-bulb-outer,
+  .avatar-bulb-mid {
+    animation: none;
+    opacity: 0.6;
   }
 }
 

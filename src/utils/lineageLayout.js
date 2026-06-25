@@ -8,23 +8,24 @@ import { hline, snap, vline } from './svgGeometry'
  */
 const DESKTOP = {
   SLOT: {
-    default: { cardW: 96, cardH: 148, pad: 8, avatar: 64, textH: 68 },
-    focal: { cardW: 128, cardH: 168, pad: 8, avatar: 96, textH: 68 },
+    default: { cardW: 92, cardH: 142, pad: 8, avatar: 60, textH: 66 },
+    focal: { cardW: 120, cardH: 162, pad: 8, avatar: 88, textH: 66 },
+    child: { cardW: 84, cardH: 128, pad: 6, avatar: 50, textH: 60 },
   },
-  SLOT_GAP: 20,
-  ROW_GAP: 84,
-  PAD: { top: 132, bottom: 56, x: 56 },
+  SLOT_GAP: 18,
+  ROW_GAP: 72,
+  PAD: { top: 40, bottom: 36, x: 40 },
 }
 
 const MOBILE = {
   SLOT: {
-    default: { cardW: 100, cardH: 158, pad: 6, avatar: 62, textH: 82 },
-    focal: { cardW: 118, cardH: 172, pad: 6, avatar: 80, textH: 82 },
+    default: { cardW: 96, cardH: 150, pad: 6, avatar: 58, textH: 78 },
+    focal: { cardW: 112, cardH: 164, pad: 6, avatar: 76, textH: 78 },
+    child: { cardW: 82, cardH: 122, pad: 5, avatar: 46, textH: 64 },
   },
   SLOT_GAP: 10,
-  ROW_GAP: 56,
-  // Chrome padding is handled by the viewport — keep layout padding minimal.
-  PAD: { top: 16, bottom: 28, x: 24 },
+  ROW_GAP: 52,
+  PAD: { top: 12, bottom: 20, x: 20 },
 }
 
 export const SLOT = DESKTOP.SLOT
@@ -32,8 +33,6 @@ export const SLOT = DESKTOP.SLOT
 export function getLineageMetrics() {
   return isNarrowViewport() ? MOBILE : DESKTOP
 }
-
-const LINK_Y_FROM_AVATAR_TOP = DESKTOP.SLOT.default.avatar / 2
 
 function slotOf(variant = 'default') {
   const { SLOT } = getLineageMetrics()
@@ -210,7 +209,12 @@ export function buildLineageLayout(neighborhood) {
   const children = sortPeople(neighborhood.children)
 
   const parentItems = parents.map((p) => ({ person: p, role: 'parent', id: p.id }))
-  const childItems = children.map((p) => ({ person: p, role: 'child', id: p.id }))
+  const childItems = children.map((p) => ({
+    person: p,
+    role: 'child',
+    id: p.id,
+    variant: 'child',
+  }))
 
   const { SLOT_GAP } = getLineageMetrics()
   const focalRowLeft =
@@ -241,11 +245,56 @@ export function buildLineageLayout(neighborhood) {
 
   if (childItems.length > 0) {
     nodes.push(...placeCenteredRow(childItems, y, centerX))
-    y += SLOT.default.cardH
+    y += slotOf('child').cardH
   }
 
-  const height = snap(y + PAD.bottom)
+  // Normalize so content hugs symmetric padding — keeps viewport centering exact.
+  let bounds = layoutBounds({ nodes })
+  if (bounds) {
+    const dx = PAD.x - bounds.x
+    const dy = PAD.top - bounds.y
+    for (const node of nodes) {
+      node.x = snap(node.x + dx)
+      node.y = snap(node.y + dy)
+    }
+    bounds = layoutBounds({ nodes })
+  }
+
+  const width = snap((bounds?.w ?? canvasW) + 2 * PAD.x)
+  const height = snap((bounds?.h ?? y - PAD.top) + PAD.top + PAD.bottom)
   const paths = buildPaths(nodes)
 
-  return { nodes, paths, width: canvasW, height }
+  return { nodes, paths, width, height }
+}
+
+/** Bounding box of all positioned nodes (for fit-to-screen). */
+export function layoutBounds(layout) {
+  if (!layout?.nodes?.length) return null
+  let minX = Infinity
+  let minY = Infinity
+  let maxX = -Infinity
+  let maxY = -Infinity
+  for (const node of layout.nodes) {
+    const s = slotOf(node.variant)
+    minX = Math.min(minX, node.x)
+    minY = Math.min(minY, node.y)
+    maxX = Math.max(maxX, node.x + s.cardW)
+    maxY = Math.max(maxY, node.y + s.cardH)
+  }
+  return { x: minX, y: minY, w: maxX - minX, h: maxY - minY }
+}
+
+/** Rect for a single layout node (viewport focus / hit testing). */
+export function nodeRect(node) {
+  if (!node) return null
+  const s = slotOf(node.variant)
+  return { x: node.x, y: node.y, w: s.cardW, h: s.cardH }
+}
+
+/** Focal person rect — used to bias the camera glide on navigation. */
+export function focalRect(layout, focusId) {
+  const focal =
+    layout?.nodes?.find((n) => n.id === focusId && n.role === 'focal') ??
+    layout?.nodes?.find((n) => n.id === focusId)
+  return nodeRect(focal)
 }

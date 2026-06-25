@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTree } from '../hooks/useTree'
 import { useAuth } from '../hooks/useAuth'
 import { useLanguage } from '../hooks/useLanguage'
@@ -6,7 +6,7 @@ import LanguageToggle from './LanguageToggle'
 import ViewToggle from './ViewToggle'
 import AdminSignInModal from './AdminSignInModal'
 
-function IconButton({ label, onClick, active, children, className = '' }) {
+function IconButton({ label, onClick, children, className = '' }) {
   return (
     <button
       type="button"
@@ -37,10 +37,6 @@ export default function TopBar() {
   const { ui } = useLanguage()
   const [adminSignInOpen, setAdminSignInOpen] = useState(false)
   const longPressTimer = useRef(null)
-
-  useEffect(() => {
-    if (session) setAdminSignInOpen(false)
-  }, [session])
 
   const playStory = () => {
     stopRelate()
@@ -146,7 +142,10 @@ export default function TopBar() {
         </div>
       </header>
 
-      <AdminSignInModal open={adminSignInOpen} onClose={() => setAdminSignInOpen(false)} />
+      <AdminSignInModal
+        open={adminSignInOpen && !session}
+        onClose={() => setAdminSignInOpen(false)}
+      />
     </>
   )
 }

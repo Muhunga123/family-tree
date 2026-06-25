@@ -145,4 +145,35 @@ export function pickRootId(people) {
   return ids[0]
 }
 
+/**
+ * Default lineage “home” — prefer the viewer (me), else someone in a rich
+ * three-generation neighborhood (parents + siblings/partner + children).
+ */
+export function pickHomeFocusId(people, preferredId = null) {
+  if (preferredId && people[preferredId]) return preferredId
+
+  let bestId = null
+  let bestScore = -1
+
+  for (const p of Object.values(people)) {
+    const hasParents = p.parentIds.length > 0
+    const hasKids = p.childIds.length > 0
+    const hasPeers = p.siblingIds.length > 0 || p.partnerIds.length > 0
+    if (!hasParents && !hasKids) continue
+
+    const score =
+      (hasParents ? 5 : 0) +
+      (hasKids ? 4 : 0) +
+      (hasPeers ? 3 : 0) +
+      Math.min(p.childIds.length, 6) * 0.5
+
+    if (score > bestScore) {
+      bestScore = score
+      bestId = p.id
+    }
+  }
+
+  return bestId ?? pickRootId(people)
+}
+
 export { byBirthYear }

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { getRepository, isCloudEnabled } from '../data/familyRepository'
 import { getNeighborhood } from '../utils/neighborhood'
-import { maxGenerationDepth, byBirthYear } from '../data/normalizeFamily'
+import { maxGenerationDepth, byBirthYear, pickHomeFocusId } from '../data/normalizeFamily'
 import { getDisplayName } from '../utils/personColor'
 import { TreeContext } from './treeContext'
 
@@ -48,10 +48,48 @@ export function TreeProvider({ children }) {
 
     const apply = (next) => {
       if (!active) return
-      setTree(next)
+      setTree((prev) => {
+        if (
+          prev &&
+          prev.rootId === next.rootId &&
+          prev.myRole === next.myRole &&
+          prev.publicAccess === next.publicAccess &&
+          Object.keys(prev.people).length === Object.keys(next.people).length
+        ) {
+          // Skip re-render when realtime echoes our own edit back unchanged.
+          let same = true
+          for (const id of Object.keys(next.people)) {
+            const a = prev.people[id]
+            const b = next.people[id]
+            if (
+              !a ||
+              !b ||
+              a.name !== b.name ||
+              a.birthYear !== b.birthYear ||
+              a.deathYear !== b.deathYear ||
+              a.photo !== b.photo ||
+              a.parentIds.join(',') !== b.parentIds.join(',') ||
+              a.childIds.join(',') !== b.childIds.join(',') ||
+              a.partnerIds.join(',') !== b.partnerIds.join(',') ||
+              a.siblingIds.join(',') !== b.siblingIds.join(',')
+            ) {
+              same = false
+              break
+            }
+          }
+          if (same) return prev
+        }
+        return next
+      })
       setFocusId((current) => {
         if (current && next.people[current]) return current
-        return next.rootId
+        let storedMe = null
+        try {
+          storedMe = localStorage.getItem(ME_KEY)
+        } catch {
+          // ignore
+        }
+        return pickHomeFocusId(next.people, storedMe)
       })
       setLoading(false)
     }
@@ -102,11 +140,11 @@ export function TreeProvider({ children }) {
   const goHome = useCallback(() => {
     if (!tree) return
     setHistory([])
-    setFocusId(tree.rootId)
+    setFocusId(pickHomeFocusId(tree.people, meId))
     setViewMode('focus')
     setStoryActive(false)
     setRelateMode(false)
-  }, [tree])
+  }, [tree, meId])
 
   const startRelate = useCallback(() => {
     setRelateMode(true)

@@ -1,4 +1,4 @@
-import { useMemo, useRef, useEffect, useState } from 'react'
+import { useMemo, useRef, useEffect, useState, useCallback } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useTree } from '../hooks/useTree'
 import { useLanguage } from '../hooks/useLanguage'
@@ -9,6 +9,7 @@ import { lifespanLabel } from '../utils/neighborhood'
 import { getDisplayName } from '../utils/personColor'
 import { usePersonNavigation } from '../hooks/usePersonNavigation'
 import { useViewportFitPadding } from '../hooks/useViewportFitPadding'
+import { DURATION } from '../utils/motion'
 import PersonAvatar from './PersonAvatar'
 import ZoomControls from './ZoomControls'
 
@@ -18,18 +19,23 @@ function OverviewNode({ node, isFocal, onTap, t, maxDepth, dimmed, highlighted, 
   const lifespan = lifespanLabel(person)
 
   return (
-    <motion.button
+    <button
       type="button"
+      onPointerDown={(e) => e.stopPropagation()}
       onClick={() => {
         if (suppressClickRef?.current) return
         onTap(person.id)
       }}
-      initial={{ opacity: 0, scale: 0.85 }}
-      animate={{ opacity: dimmed ? 0.25 : 1, scale: 1 }}
-      transition={{ type: 'spring', stiffness: 260, damping: 24 }}
-      whileTap={{ scale: 0.94 }}
       className="group absolute flex flex-col items-center rounded-2xl px-1 pt-3 pb-1.5 outline-none sm:px-1.5 sm:pt-4 sm:pb-2"
-      style={{ left: x, top: y, width: NODE_W, height: NODE_H }}
+      style={{
+        left: x,
+        top: y,
+        width: NODE_W,
+        height: NODE_H,
+        opacity: dimmed ? 0.25 : 1,
+        transform: highlighted ? 'scale(1.03)' : 'scale(1)',
+        transition: 'opacity 0.55s cubic-bezier(0.16, 1, 0.3, 1), transform 0.55s cubic-bezier(0.16, 1, 0.3, 1)',
+      }}
     >
       <PersonAvatar
         person={person}
@@ -47,7 +53,7 @@ function OverviewNode({ node, isFocal, onTap, t, maxDepth, dimmed, highlighted, 
           <span className="font-sans-label text-[0.62rem] text-white/45">{lifespan}</span>
         )}
       </span>
-    </motion.button>
+    </button>
   )
 }
 
@@ -70,14 +76,24 @@ export default function OverviewCanvas() {
   const topPad = fitPadding.top
 
   const layout = useMemo(() => buildFullLayout(people), [people])
-  const { viewportRef, transform, suppressClickRef, zoomIn, zoomOut, resetView, focusRect, handlers } =
-    useTreeViewport(
+  const {
+    viewportRef,
+    transformLayerRef,
+    transform,
+    suppressClickRef,
+    interactingRef,
+    zoomIn,
+    zoomOut,
+    resetView,
+    focusRect,
+    handlers,
+  } = useTreeViewport(
       contentRef,
       {
         width: layout.width,
         height: layout.height + topPad,
       },
-      { fitPadding },
+      { fitPadding, autoFit: false },
     )
 
   const nodeById = useMemo(() => {
@@ -92,20 +108,26 @@ export default function OverviewCanvas() {
     return result ? new Set(result.path) : null
   }, [relateMode, relateAnchorId, relateTargetId, people])
 
-  useEffect(() => {
-    const id = requestAnimationFrame(resetView)
-    return () => cancelAnimationFrame(id)
-  }, [layout.width, layout.height, resetView])
+  const lastFocusFit = useRef('')
 
-  const rectOf = (node) => ({ x: node.x, y: node.y + topPad, w: NODE_W, h: NODE_H })
+  const rectOf = useCallback(
+    (node) => ({ x: node.x, y: node.y + topPad, w: NODE_W, h: NODE_H }),
+    [topPad],
+  )
 
-  // Glide to the focal person whenever it changes (not during a story tour).
+  // Glide to the focal person when focus changes (not during story mode or touch).
   useEffect(() => {
-    if (storyActive) return
+    if (storyActive || interactingRef.current) return
     const node = nodeById.get(focusId)
-    if (node) focusRect(rectOf(node), Math.max(transform.scale, 0.7))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [focusId, nodeById, storyActive])
+    if (!node) return
+    const key = `${focusId}:${layout.width}x${layout.height}`
+    if (lastFocusFit.current === key) return
+    lastFocusFit.current = key
+    focusRect(rectOf(node), undefined, {
+      duration: Math.round(DURATION.overviewFocus * 1000),
+      ease: 'luxe',
+    })
+  }, [focusId, layout.width, layout.height, storyActive, focusRect, nodeById, rectOf, interactingRef])
 
   // Story Mode — a slow cinematic glide through the generations.
   const tourOrder = useMemo(
@@ -119,12 +141,15 @@ export default function OverviewCanvas() {
 
   useEffect(() => {
     if (!storyActive || tourOrder.length === 0) return
-    setStoryStep(0)
     let step = 0
+    let timer
     const advance = () => {
       const node = tourOrder[step]
       if (node) {
-        focusRect(rectOf(node), 0.95, { duration: 1100 })
+        focusRect(rectOf(node), 0.95, {
+          duration: Math.round(DURATION.story * 1000),
+          ease: 'luxe',
+        })
         navigateTo(node.id)
         setStoryStep(step)
       }
@@ -135,10 +160,9 @@ export default function OverviewCanvas() {
         timer = setTimeout(advance, 3200)
       }
     }
-    let timer = setTimeout(advance, 300)
+    timer = setTimeout(advance, 300)
     return () => clearTimeout(timer)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [storyActive, tourOrder])
+  }, [storyActive, tourOrder, focusRect, rectOf, navigateTo, setStoryActive])
 
   if (layout.nodes.length === 0) {
     return (
@@ -155,10 +179,10 @@ export default function OverviewCanvas() {
       <div
         ref={viewportRef}
         className="h-full w-full cursor-grab overflow-hidden active:cursor-grabbing"
-        style={{ touchAction: 'none' }}
+        style={{ touchAction: 'none', isolation: 'isolate' }}
         {...handlers}
       >
-        <div style={viewportTransformStyle(transform)}>
+        <div ref={transformLayerRef} style={viewportTransformStyle(transform)}>
           <div
             ref={contentRef}
             className="relative"

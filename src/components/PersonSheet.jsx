@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useTree } from '../hooks/useTree'
 import { useLanguage } from '../hooks/useLanguage'
+import { DURATION, EASE_LUXE } from '../utils/motion'
 import { lifespanLabel } from '../utils/neighborhood'
 import { getAccent, getDisplayName, getInitials } from '../utils/personColor'
 import MemoriesPanel from './MemoriesPanel'
@@ -78,6 +79,7 @@ export default function PersonSheet() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
+          transition={{ duration: DURATION.fade, ease: EASE_LUXE }}
         >
           <motion.button
             type="button"
@@ -87,6 +89,7 @@ export default function PersonSheet() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            transition={{ duration: DURATION.fade, ease: EASE_LUXE }}
           />
 
           <motion.aside
@@ -96,7 +99,7 @@ export default function PersonSheet() {
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
-            transition={{ type: 'spring', stiffness: 300, damping: 32 }}
+            transition={{ duration: DURATION.sheet, ease: EASE_LUXE }}
           >
             <div className="flex justify-center pt-3 md:hidden">
               <span className="h-1.5 w-10 rounded-full bg-white/20" />

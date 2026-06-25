@@ -3,6 +3,7 @@ import { useTree } from '../hooks/useTree'
 import { useLanguage } from '../hooks/useLanguage'
 import { getDisplayName } from '../utils/personColor'
 import { findKinshipPath, classifyKinship } from '../utils/kinship'
+import { DURATION, EASE_LUXE } from '../utils/motion'
 
 export default function RelateBar() {
   const {
@@ -47,6 +48,7 @@ export default function RelateBar() {
           initial={{ opacity: 0, y: -12 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -12 }}
+          transition={{ duration: DURATION.fade, ease: EASE_LUXE }}
         >
           <div className="pointer-events-auto flex max-w-md items-center gap-3 rounded-2xl border border-white/10 bg-ink-2/90 px-4 py-2.5 shadow-2xl backdrop-blur-xl">
             <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-white/55" aria-hidden="true">

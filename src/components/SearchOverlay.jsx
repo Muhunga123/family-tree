@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useTree } from '../hooks/useTree'
 import { useLanguage } from '../hooks/useLanguage'
+import { DURATION, EASE_LUXE } from '../utils/motion'
 import { lifespanLabel } from '../utils/neighborhood'
 import { getDisplayName } from '../utils/personColor'
 import PersonAvatar from './PersonAvatar'
@@ -13,7 +14,9 @@ export default function SearchOverlay() {
   const inputRef = useRef(null)
 
   useEffect(() => {
-    if (searchOpen) setQuery('')
+    if (!searchOpen) return
+    const id = requestAnimationFrame(() => setQuery(''))
+    return () => cancelAnimationFrame(id)
   }, [searchOpen])
 
   useEffect(() => {
@@ -55,7 +58,7 @@ export default function SearchOverlay() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
+          transition={{ duration: DURATION.fade, ease: EASE_LUXE }}
         >
           <div className="mx-auto flex w-full max-w-xl flex-col gap-3 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-2 sm:gap-4 sm:pt-10">
             <div className="flex items-center gap-3">

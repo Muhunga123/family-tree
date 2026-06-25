@@ -1,6 +1,7 @@
 import { motion } from 'motion/react'
 import { useTree } from '../hooks/useTree'
 import { useLanguage } from '../hooks/useLanguage'
+import { DURATION, EASE_LUXE } from '../utils/motion'
 
 const OPTIONS = [
   { id: 'focus', key: 'lens.lineage' },
@@ -33,7 +34,7 @@ export default function ViewToggle() {
               <motion.span
                 layoutId="view-toggle-pill"
                 className="absolute inset-0 rounded-full bg-white"
-                transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+                transition={{ duration: DURATION.pill, ease: EASE_LUXE }}
               />
             )}
             <span className={`relative z-10 ${active ? 'text-black' : 'text-white/55'}`}>

@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { useTree } from '../hooks/useTree'
 import { useAuth } from '../hooks/useAuth'
 import { useLanguage } from '../hooks/useLanguage'
+import { DURATION, EASE_LUXE } from '../utils/motion'
 
 export default function ShareSheet() {
   const { shareOpen, setShareOpen, cloudEnabled, canEdit, actions, publicAccess } =
@@ -49,6 +50,7 @@ export default function ShareSheet() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
+          transition={{ duration: DURATION.fade, ease: EASE_LUXE }}
         >
           <motion.button
             type="button"
@@ -63,7 +65,7 @@ export default function ShareSheet() {
             initial={{ y: '100%', opacity: 0.5 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: '100%', opacity: 0 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 32 }}
+            transition={{ duration: DURATION.sheet, ease: EASE_LUXE }}
           >
             <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
               <h2 className="font-serif-display text-xl text-white">{ui('title.familyAccess')}</h2>

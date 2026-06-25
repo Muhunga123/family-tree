@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useAuth } from '../hooks/useAuth'
 import { useLanguage } from '../hooks/useLanguage'
+import { DURATION, EASE_LUXE } from '../utils/motion'
 
 function AdminSignInForm({ onClose }) {
   const { signInWithEmail } = useAuth()
@@ -90,7 +91,7 @@ export default function AdminSignInModal({ open, onClose }) {
             initial={{ y: '100%', opacity: 0.5 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: '100%', opacity: 0 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 32 }}
+            transition={{ duration: DURATION.sheet, ease: EASE_LUXE }}
           >
             <div className="border-b border-white/10 px-5 py-4">
               <h2 className="font-serif-display text-xl text-white">{ui('action.adminSignIn')}</h2>

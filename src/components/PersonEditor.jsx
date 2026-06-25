@@ -4,6 +4,7 @@ import { useTree } from '../hooks/useTree'
 import { useLanguage } from '../hooks/useLanguage'
 import { getDisplayName } from '../utils/personColor'
 import { fillRoleTranslations } from '../utils/roleTranslations'
+import { DURATION, EASE_LUXE } from '../utils/motion'
 
 const FIELD =
   'w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 font-sans-label text-base text-white placeholder:text-white/30 focus:border-white/25 focus:outline-none sm:text-sm'
@@ -79,33 +80,36 @@ export default function PersonEditor() {
 
   useEffect(() => {
     if (!editorKey) return
-    if (editing) {
-      setForm({
-        name: editing.name ?? '',
-        gender: editing.gender ?? '',
-        birthYear: editing.birthYear ?? '',
-        deathYear: editing.deathYear ?? '',
-        birthDate: editing.birthDate ?? '',
-        deathDate: editing.deathDate ?? '',
-        birthPlace: editing.birthPlace ?? '',
-        places: (editing.places ?? [])
-          .map((p) => (typeof p === 'string' ? p : p?.label))
-          .filter(Boolean)
-          .join(', '),
-        role: t(editing.role) ?? '',
-        story: t(editing.story) ?? '',
-        photo: editing.photo ?? '',
-        photoPath: editing.photo ?? '',
-      })
-      setLinkToIds([])
-      setSharedParentIds([])
-      setLinkType('child')
-    } else {
-      setForm(EMPTY)
-      setLinkToIds(relativeTo ? [relativeTo.id] : [])
-      setSharedParentIds([])
-      setLinkType('child')
-    }
+    const id = requestAnimationFrame(() => {
+      if (editing) {
+        setForm({
+          name: editing.name ?? '',
+          gender: editing.gender ?? '',
+          birthYear: editing.birthYear ?? '',
+          deathYear: editing.deathYear ?? '',
+          birthDate: editing.birthDate ?? '',
+          deathDate: editing.deathDate ?? '',
+          birthPlace: editing.birthPlace ?? '',
+          places: (editing.places ?? [])
+            .map((p) => (typeof p === 'string' ? p : p?.label))
+            .filter(Boolean)
+            .join(', '),
+          role: t(editing.role) ?? '',
+          story: t(editing.story) ?? '',
+          photo: editing.photo ?? '',
+          photoPath: editing.photo ?? '',
+        })
+        setLinkToIds([])
+        setSharedParentIds([])
+        setLinkType('child')
+      } else {
+        setForm(EMPTY)
+        setLinkToIds(relativeTo ? [relativeTo.id] : [])
+        setSharedParentIds([])
+        setLinkType('child')
+      }
+    })
+    return () => cancelAnimationFrame(id)
   }, [editorKey, editing, relativeTo, t])
 
   const toggleLinkPerson = (id) => {
@@ -291,6 +295,7 @@ export default function PersonEditor() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
+          transition={{ duration: DURATION.fade, ease: EASE_LUXE }}
         >
           <motion.button
             type="button"
@@ -305,7 +310,7 @@ export default function PersonEditor() {
             initial={{ y: '100%', opacity: 0.5 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: '100%', opacity: 0 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 32 }}
+            transition={{ duration: DURATION.sheet, ease: EASE_LUXE }}
           >
             <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
               <h2 className="font-serif-display text-xl text-white">{title}</h2>

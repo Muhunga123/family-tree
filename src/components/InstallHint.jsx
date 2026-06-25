@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
+import { DURATION, EASE_LUXE } from '../utils/motion'
 
 function isStandalone() {
   return (
@@ -37,6 +38,7 @@ export default function InstallHint() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 12 }}
+          transition={{ duration: DURATION.fade, ease: EASE_LUXE }}
         >
           <div className="pointer-events-auto w-full max-w-sm rounded-2xl border border-white/10 bg-ink-2/95 px-4 py-3.5 shadow-2xl backdrop-blur-xl">
             <p className="font-sans-label text-sm leading-relaxed text-white/85">

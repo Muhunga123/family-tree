@@ -36,6 +36,39 @@ function hashId(id) {
   return Math.abs(hash)
 }
 
+function hexToRgba(hex, alpha) {
+  const h = hex.replace('#', '')
+  const r = parseInt(h.slice(0, 2), 16)
+  const g = parseInt(h.slice(2, 4), 16)
+  const b = parseInt(h.slice(4, 6), 16)
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
+
+/** Layered rgba stops for the focal “light bulb” halo. */
+export function accentBulbLayers(accent) {
+  return {
+    core: hexToRgba(accent.from, 0.42),
+    mid: hexToRgba(accent.from, 0.24),
+    soft: hexToRgba(accent.to, 0.14),
+    whisper: hexToRgba(accent.from, 0.07),
+  }
+}
+
+/** Soft colored bloom — no white rim. */
+export function focalBulbShadow(accent) {
+  const layers = accentBulbLayers(accent)
+  return [
+    `0 0 12px 3px ${layers.mid}`,
+    `0 0 28px 10px ${layers.soft}`,
+    `0 0 48px 18px ${layers.whisper}`,
+  ].join(', ')
+}
+
+/** Default avatar ring for non-focal lineage nodes. */
+export function defaultAvatarShadow() {
+  return '0 0 0 1px rgba(255,255,255,0.18), 0 4px 14px rgba(0,0,0,0.35)'
+}
+
 export function getAccent(person) {
   const key = person?.lineage || person?.id || 'x'
   return ACCENTS[hashId(key) % ACCENTS.length]
@@ -60,19 +93,19 @@ export function memorialInitialsColor() {
 
 /** Shady silvery halo — muted grey with a gentle bright center. */
 export function memorialGlow(isFocal = false) {
-  return isFocal ? 'rgba(228, 228, 234, 0.72)' : 'rgba(198, 200, 208, 0.58)'
+  return isFocal ? 'rgba(228, 228, 234, 0.45)' : 'rgba(198, 200, 208, 0.58)'
 }
 
 export function memorialGlowOpacity(isFocal = false) {
-  return isFocal ? 0.82 : 0.68
+  return isFocal ? 0.55 : 0.68
 }
 
 export function memorialAvatarShadow({ isFocal = false, highlighted = false } = {}) {
   if (highlighted) {
-    return '0 0 0 3px rgba(255,255,255,0.9), 0 0 28px rgba(210, 212, 220, 0.45)'
+    return '0 0 20px rgba(210, 212, 220, 0.35)'
   }
   if (isFocal) {
-    return '0 0 0 1px rgba(255,255,255,0.28), 0 0 22px rgba(205, 207, 215, 0.42), inset 0 1px 0 rgba(255,255,255,0.16)'
+    return '0 0 18px rgba(205, 207, 215, 0.28), inset 0 1px 0 rgba(255,255,255,0.1)'
   }
   return '0 0 0 1px rgba(255,255,255,0.16), 0 0 16px rgba(185, 187, 195, 0.32), inset 0 1px 0 rgba(255,255,255,0.1)'
 }

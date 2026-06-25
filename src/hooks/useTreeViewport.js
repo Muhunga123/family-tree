@@ -1,20 +1,43 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { isNarrowViewport } from '../utils/mobileChrome'
+import { easeOutExpoSoft } from '../utils/motion'
 
 export const VIEWPORT_MIN_SCALE = 0.35
-export const VIEWPORT_MIN_SCALE_MOBILE = 0.45
-export const VIEWPORT_MAX_SCALE = 2.5
+export const VIEWPORT_MIN_SCALE_MOBILE = 0.4
+export const VIEWPORT_MAX_SCALE = 3
 export const VIEWPORT_ZOOM_STEP = 0.12
 const DRAG_THRESHOLD = 10
+
+/** @deprecated use navDurationMs() from utils/motion */
+export const NAV_GLIDE_MS = { mobile: 1050, desktop: 1180 }
+/** @deprecated use initialFitMs() from utils/motion */
+export const INITIAL_FIT_MS = { mobile: 620, desktop: 720 }
+
+export const EASE_GLIDE = easeOutExpoSoft
+
+export const EASE_SMOOTH = (p) =>
+  p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2
+
+function resolveEase(ease) {
+  if (typeof ease === 'function') return ease
+  if (ease === 'smooth') return EASE_SMOOTH
+  if (ease === 'luxe' || ease === 'glide') return easeOutExpoSoft
+  return easeOutExpoSoft
+}
+
+function cssTransform({ x, y, scale }) {
+  return `translate3d(${x}px, ${y}px, 0) scale(${scale})`
+}
 
 /** Shared transform wrapper — GPU layer for smoother mobile pan/zoom. */
 export function viewportTransformStyle({ x, y, scale }) {
   return {
-    transform: `translate3d(${x}px, ${y}px, 0) scale(${scale})`,
+    transform: cssTransform({ x, y, scale }),
     transformOrigin: '0 0',
     willChange: 'transform',
     width: 'max-content',
     backfaceVisibility: 'hidden',
+    WebkitBackfaceVisibility: 'hidden',
   }
 }
 
@@ -37,13 +60,20 @@ function pointerMidpoint(a, b) {
   return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }
 }
 
-export function useTreeViewport(contentRef, contentSize, options = {}) {
-  const fitPaddingRef = useRef(options.fitPadding ?? null)
-  fitPaddingRef.current = options.fitPadding ?? null
+function isInteractiveTarget(target) {
+  return (
+    target instanceof Element &&
+    !!target.closest(
+      'button, a, input, textarea, select, label, [role="button"], [data-no-pan]',
+    )
+  )
+}
 
-  const getPad = () =>
-    fitPaddingRef.current ?? { top: 0, bottom: 0, left: 0, right: 0 }
+export function useTreeViewport(contentRef, contentSize, options = {}) {
+  const fitPadding = options.fitPadding ?? null
+  const autoFit = options.autoFit !== false
   const viewportRef = useRef(null)
+  const transformLayerRef = useRef(null)
   const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 })
   const transformRef = useRef(transform)
   const dragRef = useRef(null)
@@ -52,8 +82,13 @@ export function useTreeViewport(contentRef, contentSize, options = {}) {
   const pendingPanRef = useRef(null)
   const pointersRef = useRef(new Map())
   const pinchRef = useRef(null)
-  /** When true, person-card taps should be ignored (user was panning). */
+  const interactingRef = useRef(false)
   const suppressClickRef = useRef(false)
+  const fittedSizeRef = useRef('')
+
+  const getPad = useCallback(() => {
+    return fitPadding ?? { top: 0, bottom: 0, left: 0, right: 0 }
+  }, [fitPadding])
 
   const clampScale = (s) =>
     Math.min(VIEWPORT_MAX_SCALE, Math.max(minScaleForViewport(), s))
@@ -104,7 +139,6 @@ export function useTreeViewport(contentRef, contentSize, options = {}) {
       const cw = contentW * scale
       const ch = contentH * scale
 
-      // Strict bounds — content cannot pan fully off-screen (prevents blank view).
       const minX = cw <= innerW ? pad.left + (innerW - cw) / 2 : pad.left + innerW - cw
       const maxX = cw <= innerW ? pad.left + (innerW - cw) / 2 : pad.left
       const minY = ch <= innerH ? pad.top + (innerH - ch) / 2 : pad.top + innerH - ch
@@ -112,7 +146,7 @@ export function useTreeViewport(contentRef, contentSize, options = {}) {
 
       return { minX, maxX, minY, maxY }
     },
-    [measureContent],
+    [getPad, measureContent],
   )
 
   const clampTransform = useCallback(
@@ -127,84 +161,119 @@ export function useTreeViewport(contentRef, contentSize, options = {}) {
     [getBounds],
   )
 
-  const applyTransform = useCallback(
-    (next) => {
+  /** Update transform. During touch gestures, write to DOM only (no React re-render). */
+  const paintTransform = useCallback(
+    (next, syncReact = true) => {
       const clamped = clampTransform(next)
       transformRef.current = clamped
-      setTransform(clamped)
+      if (transformLayerRef.current) {
+        transformLayerRef.current.style.transform = cssTransform(clamped)
+      }
+      if (syncReact && !interactingRef.current) {
+        setTransform(clamped)
+      }
+      return clamped
     },
     [clampTransform],
   )
 
-  useEffect(() => {
-    transformRef.current = transform
-  }, [transform])
+  const syncReactTransform = useCallback(() => {
+    setTransform({ ...transformRef.current })
+  }, [])
 
   const zoomBy = useCallback(
     (delta, anchor) => {
-      setTransform((t) => {
-        const newScale = clampScale(t.scale + delta)
-        if (newScale === t.scale) return t
+      const t = transformRef.current
+      const newScale = clampScale(t.scale + delta)
+      if (newScale === t.scale) return
 
-        const viewport = viewportRef.current
-        if (!viewport) return clampTransform({ ...t, scale: newScale })
+      const viewport = viewportRef.current
+      if (!viewport) {
+        paintTransform({ ...t, scale: newScale })
+        return
+      }
 
-        const cx = anchor?.x ?? viewport.clientWidth / 2
-        const cy = anchor?.y ?? viewport.clientHeight / 2
-        const ratio = newScale / t.scale
-
-        return clampTransform({
-          scale: newScale,
-          x: cx - (cx - t.x) * ratio,
-          y: cy - (cy - t.y) * ratio,
-        })
+      const cx = anchor?.x ?? viewport.clientWidth / 2
+      const cy = anchor?.y ?? viewport.clientHeight / 2
+      const ratio = newScale / t.scale
+      paintTransform({
+        scale: newScale,
+        x: cx - (cx - t.x) * ratio,
+        y: cy - (cy - t.y) * ratio,
       })
     },
-    [clampTransform],
+    [paintTransform],
   )
 
   const zoomIn = useCallback(() => zoomBy(VIEWPORT_ZOOM_STEP), [zoomBy])
   const zoomOut = useCallback(() => zoomBy(-VIEWPORT_ZOOM_STEP), [zoomBy])
 
   const animateTo = useCallback(
-    (target, { duration = 620 } = {}) => {
+    (target, { duration = 620, ease = 'glide' } = {}) => {
+      if (interactingRef.current) return
       cancelAnim()
       const clamped = clampTransform(target)
       if (prefersReducedMotion() || duration <= 0) {
-        setTransform(clamped)
+        paintTransform(clamped)
         return
       }
       const start = transformRef.current
       const t0 = performance.now()
-      const ease = (p) => 1 - Math.pow(1 - p, 3)
+      const easeFn = resolveEase(ease)
       const step = (now) => {
         const p = Math.min(1, (now - t0) / duration)
-        const e = ease(p)
-        setTransform({
-          x: start.x + (clamped.x - start.x) * e,
-          y: start.y + (clamped.y - start.y) * e,
-          scale: start.scale + (clamped.scale - start.scale) * e,
-        })
+        const e = easeFn(p)
+        paintTransform(
+          {
+            x: start.x + (clamped.x - start.x) * e,
+            y: start.y + (clamped.y - start.y) * e,
+            scale: start.scale + (clamped.scale - start.scale) * e,
+          },
+          false,
+        )
         if (p < 1) animRef.current = requestAnimationFrame(step)
-        else animRef.current = null
+        else {
+          animRef.current = null
+          syncReactTransform()
+        }
       }
       animRef.current = requestAnimationFrame(step)
     },
-    [clampTransform],
+    [clampTransform, paintTransform, syncReactTransform],
   )
 
   const focusRect = useCallback(
-    (rect, targetScale, opts) => {
+    (rect, targetScale, opts = {}) => {
       const viewport = viewportRef.current
-      if (!viewport || !rect) return
+      if (!viewport || !rect || interactingRef.current) return
       const pad = getPad()
-      const vw = viewport.clientWidth
-      const vh = viewport.clientHeight
-      const innerW = Math.max(vw - pad.left - pad.right, 1)
-      const innerH = Math.max(vh - pad.top - pad.bottom, 1)
-      const scale = clampScale(targetScale ?? transformRef.current.scale)
-      const cx = rect.x + (rect.w ?? 0) / 2
-      const cy = rect.y + (rect.h ?? 0) / 2
+      const innerW = Math.max(viewport.clientWidth - pad.left - pad.right, 1)
+      const innerH = Math.max(viewport.clientHeight - pad.top - pad.bottom, 1)
+
+      let scale = targetScale
+      if (scale == null && opts.bounds?.w && opts.bounds?.h) {
+        const margin = opts.margin ?? (isNarrowViewport() ? 16 : 28)
+        const fit = Math.min(
+          innerW / (opts.bounds.w + margin),
+          innerH / (opts.bounds.h + margin),
+        )
+        scale = clampScale(fit * (opts.padding ?? 0.94))
+      } else {
+        scale = clampScale(scale ?? transformRef.current.scale)
+      }
+
+      const focalCx = rect.x + (rect.w ?? 0) / 2
+      const focalCy = rect.y + (rect.h ?? 0) / 2
+      let cx = focalCx
+      let cy = focalCy
+      if (opts.bounds?.w && opts.bounds?.h) {
+        const boundsCx = opts.bounds.x + opts.bounds.w / 2
+        const boundsCy = opts.bounds.y + opts.bounds.h / 2
+        const bias = opts.focalBias ?? 0.42
+        cx = boundsCx + (focalCx - boundsCx) * bias
+        cy = boundsCy + (focalCy - boundsCy) * bias
+      }
+
       animateTo(
         {
           scale,
@@ -214,52 +283,134 @@ export function useTreeViewport(contentRef, contentSize, options = {}) {
         opts,
       )
     },
-    [animateTo],
+    [animateTo, getPad],
+  )
+
+  const fitBounds = useCallback(
+    (bounds, opts = {}) => {
+      const viewport = viewportRef.current
+      if (!viewport || !bounds?.w || !bounds?.h || interactingRef.current) return
+      const pad = getPad()
+      const innerW = Math.max(viewport.clientWidth - pad.left - pad.right, 1)
+      const innerH = Math.max(viewport.clientHeight - pad.top - pad.bottom, 1)
+      const margin = opts.margin ?? (isNarrowViewport() ? 16 : 28)
+      const fit = Math.min(
+        innerW / (bounds.w + margin),
+        innerH / (bounds.h + margin),
+      )
+      const scale = clampScale(fit * (opts.padding ?? 0.94))
+      const cx = bounds.x + bounds.w / 2
+      const cy = bounds.y + bounds.h / 2
+      animateTo(
+        {
+          scale,
+          x: pad.left + innerW / 2 - cx * scale,
+          y: pad.top + innerH / 2 - cy * scale,
+        },
+        { duration: opts.duration ?? (isNarrowViewport() ? 380 : 500), ease: opts.ease ?? 'glide' },
+      )
+    },
+    [animateTo, getPad],
+  )
+
+  const computeFitTransform = useCallback(
+    (bounds, focal, opts = {}) => {
+      const viewport = viewportRef.current
+      if (!viewport || !bounds?.w || !bounds?.h) return null
+      const pad = getPad()
+      const innerW = Math.max(viewport.clientWidth - pad.left - pad.right, 1)
+      const innerH = Math.max(viewport.clientHeight - pad.top - pad.bottom, 1)
+      const margin = opts.margin ?? (isNarrowViewport() ? 16 : 28)
+      const fit = Math.min(
+        innerW / (bounds.w + margin),
+        innerH / (bounds.h + margin),
+      )
+      const scale = clampScale(fit * (opts.padding ?? 0.94))
+
+      let cx = bounds.x + bounds.w / 2
+      let cy = bounds.y + bounds.h / 2
+      if (focal?.w && focal?.h) {
+        const focalCx = focal.x + focal.w / 2
+        const focalCy = focal.y + focal.h / 2
+        const bias = opts.focalBias ?? 0.38
+        cx = cx + (focalCx - cx) * bias
+        cy = cy + (focalCy - cy) * bias
+      }
+
+      return {
+        scale,
+        x: pad.left + innerW / 2 - cx * scale,
+        y: pad.top + innerH / 2 - cy * scale,
+      }
+    },
+    [getPad],
+  )
+
+  /**
+   * FLIP-style handoff: pin a content point to a screen position, then glide
+   * to the target framing. Makes the tapped person feel anchored in place.
+   */
+  const glideFromScreen = useCallback(
+    (screenPoint, contentCenter, target, opts = {}) => {
+      if (interactingRef.current || !target) return
+      const scale = target.scale
+      paintTransform(
+        {
+          x: screenPoint.x - contentCenter.x * scale,
+          y: screenPoint.y - contentCenter.y * scale,
+          scale,
+        },
+        false,
+      )
+      animateTo(target, { ease: 'luxe', ...opts })
+    },
+    [animateTo, paintTransform],
   )
 
   const resetView = useCallback(() => {
+    if (interactingRef.current) return
     const viewport = viewportRef.current
     if (!viewport) {
-      setTransform({ x: 0, y: 0, scale: 1 })
+      paintTransform({ x: 0, y: 0, scale: 1 })
       return
     }
     const pad = getPad()
-    const vw = viewport.clientWidth
-    const vh = viewport.clientHeight
-    const innerW = Math.max(vw - pad.left - pad.right, 1)
-    const innerH = Math.max(vh - pad.top - pad.bottom, 1)
+    const innerW = Math.max(viewport.clientWidth - pad.left - pad.right, 1)
+    const innerH = Math.max(viewport.clientHeight - pad.top - pad.bottom, 1)
     const { width: cw, height: ch } = measureContent()
     const fitContain = Math.min(innerW / cw, innerH / ch)
-    const narrow = isNarrowViewport()
-    const fit = narrow
-      ? Math.min(Math.max(fitContain, 0.58), 1.35) * 0.97
-      : Math.min(fitContain, 1) * 0.92
+    const fit = isNarrowViewport() ? fitContain * 0.94 : Math.min(fitContain, 1) * 0.92
     const scale = clampScale(fit)
-    applyTransform({
+    paintTransform({
       scale,
       x: pad.left + (innerW - cw * scale) / 2,
       y: pad.top + (innerH - ch * scale) / 2,
     })
-  }, [applyTransform, measureContent])
+  }, [getPad, measureContent, paintTransform])
 
+  // Initial fit once per content size — callers can disable when they manage their own fit.
   useEffect(() => {
+    if (!autoFit) return
+    const key = `${resolvedSize.width}x${resolvedSize.height}`
+    if (!resolvedSize.width || !resolvedSize.height) return
+    if (fittedSizeRef.current === key || interactingRef.current) return
+    fittedSizeRef.current = key
     const id = requestAnimationFrame(resetView)
     return () => cancelAnimationFrame(id)
-  }, [resetView])
-
-  useEffect(() => {
-    setTransform((t) => clampTransform(t))
-  }, [clampTransform, resolvedSize.height, resolvedSize.width])
+  }, [autoFit, resolvedSize.width, resolvedSize.height, resetView])
 
   const flushPan = useCallback(() => {
     panFrameRef.current = null
     if (!pendingPanRef.current) return
-    applyTransform({
-      scale: transformRef.current.scale,
-      ...pendingPanRef.current,
-    })
+    paintTransform(
+      {
+        scale: transformRef.current.scale,
+        ...pendingPanRef.current,
+      },
+      false,
+    )
     pendingPanRef.current = null
-  }, [applyTransform])
+  }, [paintTransform])
 
   const schedulePan = useCallback(
     (x, y) => {
@@ -271,21 +422,25 @@ export function useTreeViewport(contentRef, contentSize, options = {}) {
     [flushPan],
   )
 
+  const endInteraction = useCallback(() => {
+    interactingRef.current = false
+    syncReactTransform()
+  }, [syncReactTransform])
+
   const onPointerDown = (e) => {
+    // Let person cards and other controls receive taps without starting a pan.
+    if (isInteractiveTarget(e.target)) return
+
     cancelAnim()
     pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
-    e.currentTarget.setPointerCapture?.(e.pointerId)
 
     if (pointersRef.current.size === 2) {
+      interactingRef.current = true
+      e.currentTarget.setPointerCapture?.(e.pointerId)
       const pts = [...pointersRef.current.values()]
       const dist = pointerDistance(pts[0], pts[1])
       if (dist > 0) {
-        pinchRef.current = {
-          dist,
-          scale: transformRef.current.scale,
-          x: transformRef.current.x,
-          y: transformRef.current.y,
-        }
+        pinchRef.current = { dist, scale: transformRef.current.scale }
       }
       dragRef.current = null
       return
@@ -320,11 +475,14 @@ export function useTreeViewport(contentRef, contentSize, options = {}) {
       const newScale = clampScale(pinchRef.current.scale * ratio)
       const t = transformRef.current
       const scaleRatio = newScale / t.scale
-      applyTransform({
-        scale: newScale,
-        x: anchor.x - (anchor.x - t.x) * scaleRatio,
-        y: anchor.y - (anchor.y - t.y) * scaleRatio,
-      })
+      paintTransform(
+        {
+          scale: newScale,
+          x: anchor.x - (anchor.x - t.x) * scaleRatio,
+          y: anchor.y - (anchor.y - t.y) * scaleRatio,
+        },
+        false,
+      )
       suppressClickRef.current = true
       return
     }
@@ -332,9 +490,12 @@ export function useTreeViewport(contentRef, contentSize, options = {}) {
     if (!dragRef.current || dragRef.current.id !== e.pointerId) return
     const dx = e.clientX - dragRef.current.x
     const dy = e.clientY - dragRef.current.y
-    if (Math.hypot(dx, dy) > DRAG_THRESHOLD) {
+    if (!dragRef.current.moved) {
+      if (Math.hypot(dx, dy) <= DRAG_THRESHOLD) return
       dragRef.current.moved = true
       suppressClickRef.current = true
+      interactingRef.current = true
+      e.currentTarget.setPointerCapture?.(e.pointerId)
     }
     schedulePan(dragRef.current.tx + dx, dragRef.current.ty + dy)
   }
@@ -346,6 +507,10 @@ export function useTreeViewport(contentRef, contentSize, options = {}) {
     if (dragRef.current?.id === e.pointerId) {
       if (dragRef.current.moved) suppressClickRef.current = true
       dragRef.current = null
+    }
+
+    if (pointersRef.current.size === 0) {
+      endInteraction()
     }
 
     if (suppressClickRef.current) {
@@ -365,7 +530,8 @@ export function useTreeViewport(contentRef, contentSize, options = {}) {
 
   useEffect(() => {
     const handleResize = () => {
-      setTransform((t) => clampTransform(t))
+      if (interactingRef.current) return
+      paintTransform(transformRef.current)
     }
     window.addEventListener('resize', handleResize)
     window.addEventListener('orientationchange', handleResize)
@@ -373,19 +539,24 @@ export function useTreeViewport(contentRef, contentSize, options = {}) {
       window.removeEventListener('resize', handleResize)
       window.removeEventListener('orientationchange', handleResize)
     }
-  }, [clampTransform])
+  }, [paintTransform])
 
   useEffect(() => cancelAnim, [])
 
   return {
     viewportRef,
+    transformLayerRef,
     transform,
     suppressClickRef,
+    interactingRef,
     zoomIn,
     zoomOut,
     resetView,
     animateTo,
     focusRect,
+    fitBounds,
+    computeFitTransform,
+    glideFromScreen,
     handlers: {
       onPointerDown,
       onPointerMove,

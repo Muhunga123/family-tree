@@ -5,6 +5,7 @@ import { lifespanLabel } from '../utils/neighborhood'
 import { getDisplayName } from '../utils/personColor'
 import { getLineageMetrics } from '../utils/lineageLayout'
 import { isNarrowViewport } from '../utils/mobileChrome'
+import { luxeTween } from '../utils/motion'
 import PersonAvatar from './PersonAvatar'
 
 const SIZES = {
@@ -71,7 +72,11 @@ export default forwardRef(function PersonCard(
           </span>
         )}
         {role && !label && (
-          <span className={`line-clamp-1 font-sans-label tracking-[0.14em] text-white/35 [font-variant-caps:small-caps] ${positioned && narrow ? 'text-[0.62rem]' : 'text-[0.6rem]'}`}>
+          <span
+            className={`line-clamp-1 font-sans-label uppercase tracking-[0.16em] text-white/40 ${
+              positioned && narrow ? 'text-[0.6rem]' : 'text-[0.58rem]'
+            }`}
+          >
             {role}
           </span>
         )}
@@ -80,7 +85,7 @@ export default forwardRef(function PersonCard(
   )
 
   const baseClass = positioned
-    ? 'absolute flex flex-col items-center outline-none transition-opacity duration-300 focus-visible:ring-2 focus-visible:ring-white/40'
+    ? `lineage-card absolute flex flex-col items-center outline-none focus:outline-none${isFocal ? ' lineage-card-focal' : ''}`
     : `group flex shrink-0 flex-col items-center gap-2 ${size.width} rounded-2xl p-2 outline-none transition-opacity duration-300 focus-visible:ring-2 focus-visible:ring-white/40`
 
   const positionedStyle = positioned
@@ -91,6 +96,7 @@ export default forwardRef(function PersonCard(
         height: slot.cardH,
         padding: slot.pad,
         opacity: dimmed ? 0.28 : 1,
+        transform: highlighted ? 'scale(1.03)' : 'scale(1)',
       }
     : { ...style, opacity: dimmed ? 0.28 : 1 }
 
@@ -98,9 +104,11 @@ export default forwardRef(function PersonCard(
     return (
       <button
         type="button"
-        onClick={() => {
+        data-person-id={person.id}
+        onPointerDown={(e) => e.stopPropagation()}
+        onClick={(e) => {
           if (suppressClickRef?.current) return
-          onTap?.(person.id)
+          onTap?.(person.id, e)
         }}
         onContextMenu={(e) => {
           if (onLongPress) {
@@ -119,7 +127,6 @@ export default forwardRef(function PersonCard(
   return (
     <motion.button
       type="button"
-      layout
       onClick={() => onTap?.(person.id)}
       onContextMenu={(e) => {
         if (onLongPress) {
@@ -127,11 +134,11 @@ export default forwardRef(function PersonCard(
           onLongPress(person.id)
         }
       }}
-      initial={{ opacity: 0, scale: 0.9 }}
+      initial={{ opacity: 0, scale: 0.96 }}
       animate={{ opacity: dimmed ? 0.28 : 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.9 }}
-      transition={{ type: 'spring', stiffness: 320, damping: 26 }}
-      whileTap={{ scale: 0.95 }}
+      exit={{ opacity: 0, scale: 0.96 }}
+      transition={luxeTween(0.38)}
+      whileTap={{ scale: 0.97 }}
       className={baseClass}
       style={style}
     >
