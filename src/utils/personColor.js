@@ -44,13 +44,20 @@ function hexToRgba(hex, alpha) {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`
 }
 
+/** Purple accent for the focal lineage person (design mock). */
+export const FOCAL_ACCENT = {
+  from: '#9b6cff',
+  to: '#7c6cff',
+  glow: 'rgba(155, 108, 255, 0.42)',
+}
+
 /** Layered rgba stops for the focal “light bulb” halo. */
 export function accentBulbLayers(accent) {
   return {
-    core: hexToRgba(accent.from, 0.42),
-    mid: hexToRgba(accent.from, 0.24),
-    soft: hexToRgba(accent.to, 0.14),
-    whisper: hexToRgba(accent.from, 0.07),
+    core: hexToRgba(accent.from, 0.32),
+    mid: hexToRgba(accent.from, 0.18),
+    soft: hexToRgba(accent.to, 0.1),
+    whisper: hexToRgba(accent.from, 0.05),
   }
 }
 

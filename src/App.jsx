@@ -20,9 +20,10 @@ import TodayBanner from './components/TodayBanner'
 function LoadingScreen() {
   return (
     <div className="flex h-dvh w-full items-center justify-center">
-      <div className="flex flex-col items-center gap-4">
-        <span className="h-10 w-10 animate-spin rounded-full border-2 border-white/15 border-t-white/70" />
-        <p className="font-sans-label text-sm text-white/40">Loading your family…</p>
+      <div className="loading-screen">
+        <span className="loading-ring" aria-hidden="true" />
+        <p className="loading-title">Our Family</p>
+        <p className="loading-sub">Loading your lineage…</p>
       </div>
     </div>
   )
@@ -35,9 +36,13 @@ function AppShell() {
   if (error) {
     return (
       <div className="flex h-dvh w-full items-center justify-center px-6 text-center">
-        <p className="font-sans-label text-sm text-white/60">
-          Something went wrong loading the tree. Please refresh.
-        </p>
+        <div className="glass-panel max-w-md rounded-2xl px-8 py-10">
+          <p className="font-serif-display text-xl text-white/90">Our Family</p>
+          <p className="mt-3 font-sans-label text-sm leading-relaxed text-white/55">
+            Something went wrong loading the tree. Please refresh, or ask the family admin for the
+            public link.
+          </p>
+        </div>
       </div>
     )
   }

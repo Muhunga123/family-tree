@@ -557,7 +557,7 @@ export default function PersonEditor() {
                       : 'border border-white/10 text-white/70 hover:bg-white/5'
                   }`}
                 >
-                  {isMe ? '✓ This is me' : 'Mark as “me” (for “How are we related?”)'}
+                  {isMe ? ui('action.markAsMeActive') : ui('action.markAsMe')}
                 </button>
               )}
             </div>

@@ -3,6 +3,7 @@ import {
   accentBulbLayers,
   defaultAvatarShadow,
   focalBulbShadow,
+  FOCAL_ACCENT,
   getAccent,
   getDisplayName,
   getInitials,
@@ -30,8 +31,8 @@ const PersonAvatar = forwardRef(function PersonAvatar(
   },
   ref,
 ) {
-  const accent = getAccent(person)
   const deceased = isDeceased(person)
+  const accent = isFocal && !deceased ? FOCAL_ACCENT : getAccent(person)
   const displayName = alt ?? getDisplayName(person)
   const bulb = accentBulbLayers(accent)
   const initialsClass = size >= 80 ? 'text-2xl' : size >= 56 ? 'text-base' : 'text-sm'

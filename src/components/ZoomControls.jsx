@@ -9,7 +9,7 @@ export default function ZoomControls({ scale, zoomIn, zoomOut, resetView }) {
 
   return (
     <div className="pointer-events-none absolute bottom-[calc(4.75rem+env(safe-area-inset-bottom))] left-3 z-20 flex flex-col gap-1.5 sm:bottom-28 sm:left-4">
-      <div className="pointer-events-auto flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-ink-2/90 shadow-xl backdrop-blur-xl">
+      <div className="glass-panel pointer-events-auto flex flex-col overflow-hidden rounded-2xl">
         <button
           type="button"
           aria-label="Zoom in"

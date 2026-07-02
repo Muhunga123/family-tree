@@ -31,11 +31,43 @@ function shiftUnitDepth(uid, delta, unitChildren, placed) {
   }
 }
 
+/** After depth shifts, keep every unit at depth >= 0. */
+function normalizeMinDepth(placed, unitChildren) {
+  let minDepth = Infinity
+  for (const p of placed.values()) minDepth = Math.min(minDepth, p.depth)
+  if (!Number.isFinite(minDepth) || minDepth >= 0) return
+  const lift = -minDepth
+  for (const uid of placed.keys()) {
+    shiftUnitDepth(uid, lift, unitChildren, placed)
+  }
+}
+
+/**
+ * Satellite siblings sit beside their anchor on the anchor's row. Their
+ * descendants branch upward so they don't collide with the anchor's children.
+ */
+function branchSatelliteChildrenUpward(satelliteUnits, unitChildren, placed) {
+  for (const satelliteUid of satelliteUnits) {
+    const parent = placed.get(satelliteUid)
+    if (!parent) continue
+    const kids = unitChildren.get(satelliteUid) ?? []
+    if (kids.length === 0) continue
+
+    const targetDepth = parent.depth - 1
+    for (const childUid of kids) {
+      const child = placed.get(childUid)
+      if (!child) continue
+      const delta = targetDepth - child.depth
+      if (delta !== 0) shiftUnitDepth(childUid, delta, unitChildren, placed)
+    }
+  }
+}
+
 /**
  * Pull explicit siblings onto the same row as their anchor and place them to
  * the anchor's left — so lines always run from the person they relate to.
  */
-function alignExplicitSiblings(people, units, unitOf, placed, unitChildren, unitWidth, shiftTree) {
+function alignExplicitSiblings(people, units, unitOf, placed, unitChildren, unitWidth, shiftTree, satelliteUnits) {
   for (const { anchorId: anchorPersonId, satelliteId: satellitePersonId } of collectExplicitSiblingPairs(
     people,
   )) {
@@ -46,6 +78,8 @@ function alignExplicitSiblings(people, units, unitOf, placed, unitChildren, unit
     const anchorPlaced = placed.get(anchorUid)
     const satellitePlaced = placed.get(satelliteUid)
     if (!anchorPlaced || !satellitePlaced) continue
+
+    satelliteUnits.add(satelliteUid)
 
     const targetDepth = anchorPlaced.depth
     const depthDelta = targetDepth - satellitePlaced.depth
@@ -204,7 +238,10 @@ export function buildFullLayout(people) {
   }
 
   // 2b. Anchor explicit siblings beside their linked relative (no more limbo).
-  alignExplicitSiblings(people, units, unitOf, placed, unitChildren, unitWidth, shiftTree)
+  const satelliteUnits = new Set()
+  alignExplicitSiblings(people, units, unitOf, placed, unitChildren, unitWidth, shiftTree, satelliteUnits)
+  branchSatelliteChildrenUpward(satelliteUnits, unitChildren, placed)
+  normalizeMinDepth(placed, unitChildren)
 
   // 3. Build node boxes + center lookups.
   const nodes = []
@@ -276,15 +313,25 @@ export function buildFullLayout(people) {
     }
 
     const childTopY = Math.min(...childCenters.map((c) => c.topY))
-    const railY = snap(avatarBottom + (childTopY - avatarBottom) * 0.42)
+    const childBottomY = Math.max(...childCenters.map((c) => c.bottomY))
+    const branchUp = childBottomY < unitY
 
-    parentPaths.push(vline(stemX, stemTopY, railY))
-
-    const xs = [...childCenters.map((c) => c.cx), stemX]
-    parentPaths.push(hline(Math.min(...xs), Math.max(...xs), railY))
-
-    for (const c of childCenters) {
-      parentPaths.push(vline(c.cx, railY, c.topY))
+    if (branchUp) {
+      const railY = snap(childBottomY + (unitY - childBottomY) * 0.42)
+      for (const c of childCenters) {
+        parentPaths.push(vline(c.cx, c.bottomY, railY))
+      }
+      const xs = [...childCenters.map((c) => c.cx), stemX]
+      parentPaths.push(hline(Math.min(...xs), Math.max(...xs), railY))
+      parentPaths.push(vline(stemX, railY, stemTopY))
+    } else {
+      const railY = snap(avatarBottom + (childTopY - avatarBottom) * 0.42)
+      parentPaths.push(vline(stemX, stemTopY, railY))
+      const xs = [...childCenters.map((c) => c.cx), stemX]
+      parentPaths.push(hline(Math.min(...xs), Math.max(...xs), railY))
+      for (const c of childCenters) {
+        parentPaths.push(vline(c.cx, railY, c.topY))
+      }
     }
   })
 

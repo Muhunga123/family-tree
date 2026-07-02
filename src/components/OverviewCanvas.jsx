@@ -1,5 +1,4 @@
-import { useMemo, useRef, useEffect, useState, useCallback } from 'react'
-import { AnimatePresence, motion } from 'motion/react'
+import { useMemo, useRef, useEffect, useCallback } from 'react'
 import { useTree } from '../hooks/useTree'
 import { useLanguage } from '../hooks/useLanguage'
 import { useTreeViewport, viewportTransformStyle } from '../hooks/useTreeViewport'
@@ -10,12 +9,16 @@ import { getDisplayName } from '../utils/personColor'
 import { usePersonNavigation } from '../hooks/usePersonNavigation'
 import { useViewportFitPadding } from '../hooks/useViewportFitPadding'
 import { DURATION } from '../utils/motion'
+import { CONNECTOR } from '../design/tokens'
+import { buildOverviewStops } from '../utils/storyTour'
+import { useStoryTour } from '../hooks/useStoryTour'
 import PersonAvatar from './PersonAvatar'
+import StoryOverlay from './StoryOverlay'
 import ZoomControls from './ZoomControls'
 
-function OverviewNode({ node, isFocal, onTap, t, maxDepth, dimmed, highlighted, suppressClickRef }) {
+function OverviewNode({ node, isFocal, onTap, translate, maxDepth, dimmed, highlighted, suppressClickRef }) {
   const { person, x, y } = node
-  const displayName = getDisplayName(person, t(person.role))
+  const displayName = getDisplayName(person, translate(person.role))
   const lifespan = lifespanLabel(person)
 
   return (
@@ -32,8 +35,8 @@ function OverviewNode({ node, isFocal, onTap, t, maxDepth, dimmed, highlighted, 
         top: y,
         width: NODE_W,
         height: NODE_H,
-        opacity: dimmed ? 0.25 : 1,
-        transform: highlighted ? 'scale(1.03)' : 'scale(1)',
+        opacity: dimmed ? 0.22 : 1,
+        transform: highlighted ? 'scale(1.04)' : 'scale(1)',
         transition: 'opacity 0.55s cubic-bezier(0.16, 1, 0.3, 1), transform 0.55s cubic-bezier(0.16, 1, 0.3, 1)',
       }}
     >
@@ -61,7 +64,7 @@ export default function OverviewCanvas() {
   const {
     people,
     focusId,
-    navigateTo,
+    homeFocusId,
     maxDepth,
     relateMode,
     relateAnchorId,
@@ -88,13 +91,13 @@ export default function OverviewCanvas() {
     focusRect,
     handlers,
   } = useTreeViewport(
-      contentRef,
-      {
-        width: layout.width,
-        height: layout.height + topPad,
-      },
-      { fitPadding, autoFit: false },
-    )
+    contentRef,
+    {
+      width: layout.width,
+      height: layout.height + topPad,
+    },
+    { fitPadding, autoFit: false },
+  )
 
   const nodeById = useMemo(() => {
     const map = new Map()
@@ -115,7 +118,33 @@ export default function OverviewCanvas() {
     [topPad],
   )
 
-  // Glide to the focal person when focus changes (not during story mode or touch).
+  const storyStops = useMemo(
+    () => buildOverviewStops(layout, people, homeFocusId ?? focusId, topPad),
+    [layout, people, homeFocusId, focusId, topPad],
+  )
+
+  const {
+    stepIndex,
+    currentStop,
+    captionPerson,
+    captionBody,
+    voiceOn,
+    setVoiceOn,
+    stopTour,
+    totalSteps,
+  } = useStoryTour({
+    active: storyActive,
+    stops: storyStops,
+    people,
+    focusRect,
+    setStoryActive,
+  })
+
+  const storyHighlightSet = useMemo(
+    () => (storyActive && currentStop ? new Set(currentStop.personIds) : null),
+    [storyActive, currentStop],
+  )
+
   useEffect(() => {
     if (storyActive || interactingRef.current) return
     const node = nodeById.get(focusId)
@@ -129,56 +158,19 @@ export default function OverviewCanvas() {
     })
   }, [focusId, layout.width, layout.height, storyActive, focusRect, nodeById, rectOf, interactingRef])
 
-  // Story Mode — a slow cinematic glide through the generations.
-  const tourOrder = useMemo(
-    () =>
-      [...layout.nodes].sort(
-        (a, b) => a.depth - b.depth || a.x - b.x,
-      ),
-    [layout.nodes],
-  )
-  const [storyStep, setStoryStep] = useState(0)
-
-  useEffect(() => {
-    if (!storyActive || tourOrder.length === 0) return
-    let step = 0
-    let timer
-    const advance = () => {
-      const node = tourOrder[step]
-      if (node) {
-        focusRect(rectOf(node), 0.95, {
-          duration: Math.round(DURATION.story * 1000),
-          ease: 'luxe',
-        })
-        navigateTo(node.id)
-        setStoryStep(step)
-      }
-      step += 1
-      if (step >= tourOrder.length) {
-        timer = setTimeout(() => setStoryActive(false), 3200)
-      } else {
-        timer = setTimeout(advance, 3200)
-      }
-    }
-    timer = setTimeout(advance, 300)
-    return () => clearTimeout(timer)
-  }, [storyActive, tourOrder, focusRect, rectOf, navigateTo, setStoryActive])
-
   if (layout.nodes.length === 0) {
     return (
       <div className="flex h-full items-center justify-center text-white/40">
-        <p className="font-sans-label text-sm">No one to show yet.</p>
+        <p className="font-sans-label text-sm">{ui('misc.noOne')}</p>
       </div>
     )
   }
-
-  const storyPerson = storyActive ? tourOrder[storyStep]?.person : null
 
   return (
     <div className="relative h-full w-full">
       <div
         ref={viewportRef}
-        className="h-full w-full cursor-grab overflow-hidden active:cursor-grabbing"
+        className={`h-full w-full overflow-hidden ${storyActive ? 'cursor-default' : 'cursor-grab active:cursor-grabbing'}`}
         style={{ touchAction: 'none', isolation: 'isolate' }}
         {...handlers}
       >
@@ -200,11 +192,11 @@ export default function OverviewCanvas() {
                   key={`p-${i}`}
                   d={d}
                   fill="none"
-                  stroke="rgba(255,255,255,0.30)"
-                  strokeWidth={1.5}
+                  stroke={CONNECTOR.partner}
+                  strokeWidth={CONNECTOR.width}
                   strokeLinecap="butt"
                   strokeLinejoin="miter"
-                  strokeDasharray="4 5"
+                  strokeDasharray={CONNECTOR.partnerDash}
                 />
               ))}
 
@@ -213,11 +205,11 @@ export default function OverviewCanvas() {
                   key={`s-${i}`}
                   d={d}
                   fill="none"
-                  stroke="rgba(255,255,255,0.38)"
-                  strokeWidth={1.5}
+                  stroke={CONNECTOR.sibling}
+                  strokeWidth={CONNECTOR.width}
                   strokeLinecap="butt"
                   strokeLinejoin="miter"
-                  strokeDasharray="3 4"
+                  strokeDasharray={CONNECTOR.siblingDash}
                 />
               ))}
 
@@ -226,10 +218,11 @@ export default function OverviewCanvas() {
                   key={`c-${i}`}
                   d={d}
                   fill="none"
-                  stroke="rgba(255,255,255,0.22)"
-                  strokeWidth={1.5}
+                  stroke={CONNECTOR.parent}
+                  strokeWidth={CONNECTOR.width}
                   strokeLinecap="butt"
                   strokeLinejoin="miter"
+                  opacity={0.65}
                 />
               ))}
             </svg>
@@ -240,12 +233,19 @@ export default function OverviewCanvas() {
                 node={{ ...node, y: node.y + topPad }}
                 isFocal={node.id === focusId}
                 onTap={handleTap}
-                t={t}
+                translate={t}
                 maxDepth={maxDepth}
-                dimmed={relatePathSet ? !relatePathSet.has(node.id) : false}
+                dimmed={
+                  storyHighlightSet
+                    ? !storyHighlightSet.has(node.id)
+                    : relatePathSet
+                      ? !relatePathSet.has(node.id)
+                      : false
+                }
                 highlighted={
-                  relateMode &&
-                  (node.id === relateAnchorId || node.id === relateTargetId)
+                  (storyActive && storyHighlightSet?.has(node.id)) ||
+                  (relateMode &&
+                    (node.id === relateAnchorId || node.id === relateTargetId))
                 }
                 suppressClickRef={suppressClickRef}
               />
@@ -254,49 +254,38 @@ export default function OverviewCanvas() {
         </div>
       </div>
 
-      {/* Story Mode caption */}
-      <AnimatePresence>
-        {storyActive && storyPerson && (
-          <motion.div
-            className="pointer-events-none absolute inset-x-0 bottom-24 z-30 flex justify-center px-4 sm:bottom-28"
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 12 }}
-          >
-            <div className="pointer-events-auto max-w-md rounded-2xl border border-white/10 bg-ink-2/85 px-5 py-4 text-center shadow-2xl backdrop-blur-xl">
-              <p className="font-serif-display text-lg text-white">
-                {getDisplayName(storyPerson, t(storyPerson.role))}
-              </p>
-              <p className="mt-1 line-clamp-3 font-serif-display text-sm leading-relaxed text-white/65">
-                {t(storyPerson.story, lifespanLabel(storyPerson))}
-              </p>
-              <button
-                type="button"
-                onClick={() => setStoryActive(false)}
-                className="mt-3 rounded-full border border-white/15 px-4 py-1.5 font-sans-label text-xs text-white/70 transition-colors hover:bg-white/10 hover:text-white"
-              >
-                {ui('action.stop')}
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <StoryOverlay
+        active={storyActive}
+        captionPerson={captionPerson}
+        captionBody={captionBody}
+        labelKey={currentStop?.labelKey}
+        labelVars={currentStop?.labelVars}
+        stepIndex={stepIndex}
+        totalSteps={totalSteps}
+        voiceOn={voiceOn}
+        onVoiceToggle={() => setVoiceOn(!voiceOn)}
+        onStop={stopTour}
+      />
 
-      {/* Context chip */}
       {!storyActive && (
         <div className="pointer-events-none absolute bottom-24 right-4 z-20 rounded-full border border-white/10 bg-ink-2/70 px-3 py-1.5 backdrop-blur-md sm:bottom-28">
           <p className="font-sans-label text-[0.62rem] text-white/40">
-            {layout.nodes.length} people · {layout.generations} generations
+            {ui('misc.peopleGenerations', {
+              people: layout.nodes.length,
+              generations: layout.generations,
+            })}
           </p>
         </div>
       )}
 
-      <ZoomControls
-        scale={transform.scale}
-        zoomIn={zoomIn}
-        zoomOut={zoomOut}
-        resetView={resetView}
-      />
+      {!storyActive && (
+        <ZoomControls
+          scale={transform.scale}
+          zoomIn={zoomIn}
+          zoomOut={zoomOut}
+          resetView={resetView}
+        />
+      )}
     </div>
   )
 }

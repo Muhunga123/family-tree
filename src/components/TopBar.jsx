@@ -5,19 +5,7 @@ import { useLanguage } from '../hooks/useLanguage'
 import LanguageToggle from './LanguageToggle'
 import ViewToggle from './ViewToggle'
 import AdminSignInModal from './AdminSignInModal'
-
-function IconButton({ label, onClick, children, className = '' }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={label}
-      className={`touch-target flex h-9 w-9 shrink-0 items-center justify-center rounded-full border backdrop-blur-md transition-colors sm:h-10 sm:w-10 ${className}`}
-    >
-      {children}
-    </button>
-  )
-}
+import GlassIconButton from './GlassIconButton'
 
 export default function TopBar() {
   const {
@@ -25,6 +13,7 @@ export default function TopBar() {
     focusPerson,
     canGoBack,
     goBack,
+    goHome,
     setShareOpen,
     canEdit,
     setViewMode,
@@ -40,7 +29,8 @@ export default function TopBar() {
 
   const playStory = () => {
     stopRelate()
-    setViewMode('overview')
+    goHome()
+    setViewMode('focus')
     setStoryActive(true)
   }
 
@@ -62,15 +52,11 @@ export default function TopBar() {
         <div className="flex min-w-0 items-center justify-between gap-2">
           <div className="pointer-events-auto flex min-w-0 flex-1 items-center gap-1.5 sm:gap-2">
             {canGoBack && (
-              <IconButton
-                label="Back"
-                onClick={goBack}
-                className="border-white/10 bg-white/5 text-white/70 hover:text-white"
-              >
+              <GlassIconButton label="Back" onClick={goBack}>
                 <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
                   <path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
-              </IconButton>
+              </GlassIconButton>
             )}
             <div className="min-w-0 flex-1">
               <span
@@ -98,42 +84,29 @@ export default function TopBar() {
 
           <div className="pointer-events-auto flex shrink-0 items-center gap-1 sm:gap-2">
             <LanguageToggle />
-            <IconButton
-              label={ui('action.play')}
-              onClick={playStory}
-              className="border-white/10 bg-white/5 text-white/70 hover:text-white"
-            >
+            <GlassIconButton label={ui('action.play')} onClick={playStory}>
               <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
                 <path d="M8 5l11 7-11 7z" fill="currentColor" />
               </svg>
-            </IconButton>
-            <IconButton
+            </GlassIconButton>
+            <GlassIconButton
               label={ui('action.relate')}
               onClick={relateMode ? stopRelate : startRelate}
               active={relateMode}
-              className={
-                relateMode
-                  ? 'border-white/30 bg-white/15 text-white'
-                  : 'border-white/10 bg-white/5 text-white/70 hover:text-white'
-              }
             >
               <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
                 <circle cx="7" cy="7" r="3" fill="none" stroke="currentColor" strokeWidth="1.6" />
                 <circle cx="17" cy="17" r="3" fill="none" stroke="currentColor" strokeWidth="1.6" />
                 <path d="M9.2 9.2l5.6 5.6" stroke="currentColor" strokeWidth="1.6" />
               </svg>
-            </IconButton>
-            <IconButton
-              label={ui('title.familyAccess')}
-              onClick={() => setShareOpen(true)}
-              className="border-white/10 bg-white/5 text-white/70 hover:text-white"
-            >
+            </GlassIconButton>
+            <GlassIconButton label={ui('title.familyAccess')} onClick={() => setShareOpen(true)}>
               <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
                 <circle cx="9" cy="8" r="3" fill="none" stroke="currentColor" strokeWidth="1.6" />
                 <path d="M3.5 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
                 <path d="M17 8h4M19 6v4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
               </svg>
-            </IconButton>
+            </GlassIconButton>
           </div>
         </div>
 

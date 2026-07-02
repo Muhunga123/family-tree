@@ -83,13 +83,7 @@ export function TreeProvider({ children }) {
       })
       setFocusId((current) => {
         if (current && next.people[current]) return current
-        let storedMe = null
-        try {
-          storedMe = localStorage.getItem(ME_KEY)
-        } catch {
-          // ignore
-        }
-        return pickHomeFocusId(next.people, storedMe)
+        return pickHomeFocusId(next.people)
       })
       setLoading(false)
     }
@@ -137,14 +131,19 @@ export function TreeProvider({ children }) {
     })
   }, [])
 
+  const homeFocusId = useMemo(
+    () => (tree ? pickHomeFocusId(tree.people) : null),
+    [tree],
+  )
+
   const goHome = useCallback(() => {
     if (!tree) return
     setHistory([])
-    setFocusId(pickHomeFocusId(tree.people, meId))
+    setFocusId(pickHomeFocusId(tree.people))
     setViewMode('focus')
     setStoryActive(false)
     setRelateMode(false)
-  }, [tree, meId])
+  }, [tree])
 
   const startRelate = useCallback(() => {
     setRelateMode(true)
@@ -221,6 +220,7 @@ export function TreeProvider({ children }) {
       publicAccess: tree?.publicAccess ?? false,
       maxDepth,
       focusId,
+      homeFocusId,
       focusPerson,
       neighborhood,
       canGoBack: history.length > 0,
@@ -281,6 +281,7 @@ export function TreeProvider({ children }) {
       people,
       peopleList,
       focusId,
+      homeFocusId,
       focusPerson,
       neighborhood,
       history.length,

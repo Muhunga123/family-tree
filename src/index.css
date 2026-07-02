@@ -8,6 +8,16 @@
   --color-ink: #07070a;
   --color-ink-2: #0e0e13;
   --color-cream: #faf6f0;
+
+  --color-glass: rgba(14, 14, 19, 0.82);
+  --color-glass-strong: rgba(14, 14, 19, 0.9);
+  --color-glass-border: rgba(255, 255, 255, 0.1);
+  --color-glass-border-active: rgba(255, 255, 255, 0.28);
+  --color-text-primary: rgba(245, 245, 247, 0.92);
+  --color-text-muted: rgba(255, 255, 255, 0.55);
+  --color-text-dim: rgba(255, 255, 255, 0.4);
+  --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.42);
+  --shadow-glass-lg: 0 16px 48px rgba(0, 0, 0, 0.5);
 }
 
 html,
@@ -130,6 +140,83 @@ body {
 .touch-target {
   min-height: 44px;
   min-width: 44px;
+}
+
+/* Shared glass surfaces — TopBar, BottomBar, ViewToggle, Zoom, sheets. */
+.glass-panel {
+  border: 1px solid var(--color-glass-border);
+  background: var(--color-glass-strong);
+  box-shadow: var(--shadow-glass);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.glass-pill {
+  border: 1px solid var(--color-glass-border);
+  background: var(--color-glass);
+  box-shadow: var(--shadow-glass-lg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.glass-icon-btn {
+  border: 1px solid var(--color-glass-border);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--color-text-muted);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition:
+    color 0.2s ease,
+    background 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.glass-icon-btn:hover {
+  color: var(--color-text-primary);
+}
+
+.glass-icon-btn-active {
+  border-color: var(--color-glass-border-active);
+  background: rgba(255, 255, 255, 0.14);
+  color: var(--color-text-primary);
+}
+
+/* Opening moment — calm, cinematic, on-brand. */
+.loading-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.loading-ring {
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 9999px;
+  border: 2px solid rgba(255, 255, 255, 0.12);
+  border-top-color: rgba(255, 255, 255, 0.72);
+  animation: loading-spin 0.9s cubic-bezier(0.45, 0, 0.15, 1) infinite;
+}
+
+@keyframes loading-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-title {
+  font-family: var(--font-serif-display);
+  font-size: 1.35rem;
+  letter-spacing: 0.01em;
+  color: var(--color-text-primary);
+}
+
+.loading-sub {
+  font-family: var(--font-sans-label);
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text-dim);
 }
 
 /* Prevent iOS zoom when focusing inputs (needs 16px+). */

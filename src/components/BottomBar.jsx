@@ -24,7 +24,7 @@ export default function BottomBar() {
 
   return (
     <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 flex justify-center px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 sm:p-4 sm:pb-[calc(1rem+env(safe-area-inset-bottom))]">
-      <nav className="pointer-events-auto flex items-center gap-1 rounded-full border border-white/10 bg-ink-2/80 p-1.5 shadow-2xl backdrop-blur-xl sm:gap-1.5 sm:p-2">
+      <nav className="glass-pill pointer-events-auto flex items-center gap-1 rounded-full p-1.5 sm:gap-1.5 sm:p-2">
         <BarButton label={ui('action.home')} onClick={goHome}>
           <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden="true">
             <path d="M4 11l8-7 8 7" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />

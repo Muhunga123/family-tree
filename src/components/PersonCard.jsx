@@ -85,7 +85,7 @@ export default forwardRef(function PersonCard(
   )
 
   const baseClass = positioned
-    ? `lineage-card absolute flex flex-col items-center outline-none focus:outline-none${isFocal ? ' lineage-card-focal' : ''}`
+    ? `lineage-card absolute flex flex-col items-center outline-none focus:outline-none focus-visible:outline-none${isFocal ? ' lineage-card-focal' : ''}`
     : `group flex shrink-0 flex-col items-center gap-2 ${size.width} rounded-2xl p-2 outline-none transition-opacity duration-300 focus-visible:ring-2 focus-visible:ring-white/40`
 
   const positionedStyle = positioned

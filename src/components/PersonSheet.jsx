@@ -54,6 +54,8 @@ export default function PersonSheet() {
     canEdit,
     relateFrom,
     setViewMode,
+    meId,
+    setMeId,
   } = useTree()
   const { t, ui } = useLanguage()
 
@@ -95,7 +97,7 @@ export default function PersonSheet() {
           <motion.aside
             role="dialog"
             aria-modal="true"
-            className="relative flex max-h-[min(88dvh,900px)] w-full flex-col overflow-hidden rounded-t-3xl border border-white/10 bg-ink-2/95 shadow-2xl backdrop-blur-2xl md:h-full md:max-h-none md:w-[420px] md:rounded-none md:rounded-l-3xl md:border-l"
+            className="relative flex max-h-[min(88dvh,900px)] w-full flex-col overflow-hidden rounded-t-3xl glass-panel shadow-2xl md:h-full md:max-h-none md:w-[420px] md:rounded-none md:rounded-l-3xl md:border-l"
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
@@ -175,6 +177,18 @@ export default function PersonSheet() {
                   <path d="M9.2 9.2l5.6 5.6" stroke="currentColor" strokeWidth="1.6" />
                 </svg>
                 {ui('action.relate')}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setMeId(meId === selectedPerson.id ? null : selectedPerson.id)}
+                className={`flex items-center justify-center gap-2 rounded-2xl px-4 py-3 font-sans-label text-sm transition-colors ${
+                  meId === selectedPerson.id
+                    ? 'bg-white/15 text-white'
+                    : 'border border-white/10 text-white/70 hover:bg-white/5'
+                }`}
+              >
+                {meId === selectedPerson.id ? ui('action.markAsMeActive') : ui('action.markAsMe')}
               </button>
 
               <div className="mt-2 flex flex-wrap gap-2">

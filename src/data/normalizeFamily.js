@@ -145,12 +145,21 @@ export function pickRootId(people) {
   return ids[0]
 }
 
+function matchesHomeFocusName(name) {
+  const n = (name || '').toLowerCase()
+  return n.includes('nestor') && n.includes('kasanda')
+}
+
 /**
- * Default lineage “home” — prefer the viewer (me), else someone in a rich
- * three-generation neighborhood (parents + siblings/partner + children).
+ * Default Lineage home — Nestor Kasanda’s three-generation view (design mock).
+ * Override with VITE_HOME_FOCUS_ID when needed.
  */
-export function pickHomeFocusId(people, preferredId = null) {
-  if (preferredId && people[preferredId]) return preferredId
+export function pickHomeFocusId(people) {
+  const envId = import.meta.env.VITE_HOME_FOCUS_ID
+  if (envId && people[envId]) return envId
+
+  const named = Object.values(people).find((p) => matchesHomeFocusName(p.name))
+  if (named) return named.id
 
   let bestId = null
   let bestScore = -1
@@ -159,13 +168,13 @@ export function pickHomeFocusId(people, preferredId = null) {
     const hasParents = p.parentIds.length > 0
     const hasKids = p.childIds.length > 0
     const hasPeers = p.siblingIds.length > 0 || p.partnerIds.length > 0
-    if (!hasParents && !hasKids) continue
+    if (!hasParents || !hasKids || !hasPeers) continue
 
     const score =
-      (hasParents ? 5 : 0) +
-      (hasKids ? 4 : 0) +
-      (hasPeers ? 3 : 0) +
-      Math.min(p.childIds.length, 6) * 0.5
+      p.parentIds.length * 2 +
+      Math.min(p.childIds.length, 10) +
+      p.siblingIds.length +
+      p.partnerIds.length
 
     if (score > bestScore) {
       bestScore = score

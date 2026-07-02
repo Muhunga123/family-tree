@@ -19,24 +19,34 @@ export default function RelateBar() {
   const anchor = relateAnchorId ? people[relateAnchorId] : null
   const target = relateTargetId ? people[relateTargetId] : null
 
-  let message
+  let headline
+  let detail
+
   if (!anchor) {
-    message = ui('relate.pickFirst')
+    headline = ui('relate.pickFirst')
   } else if (!target) {
-    message = `${getDisplayName(anchor, t(anchor.role))} → ${ui('relate.prompt')}`
+    headline = getDisplayName(anchor, t(anchor.role))
+    detail = ui('relate.prompt')
   } else if (relateAnchorId === relateTargetId) {
-    message = ui('relate.same')
+    headline = ui('relate.same')
   } else {
     const result = findKinshipPath(people, relateAnchorId, relateTargetId)
+    const targetName = getDisplayName(target, t(target.role))
+    const anchorName = getDisplayName(anchor, t(anchor.role))
+
     if (!result) {
-      message = ui('relate.none')
+      headline = targetName
+      detail = ui('relate.none')
     } else {
       const { key, inlaw } = classifyKinship(result, target) || {}
       const term = ui(`kin.${key || 'related'}`)
       const inlawSuffix = inlaw ? ` (${ui('kin.inlaw')})` : ''
-      const anchorName = getDisplayName(anchor, t(anchor.role))
-      const targetName = getDisplayName(target, t(target.role))
-      message = `${targetName} — ${term}${inlawSuffix} · ${anchorName}`
+      headline = targetName
+      detail = ui('relate.result', {
+        target: targetName,
+        relation: `${term}${inlawSuffix}`,
+        anchor: anchorName,
+      })
     }
   }
 
@@ -50,13 +60,18 @@ export default function RelateBar() {
           exit={{ opacity: 0, y: -12 }}
           transition={{ duration: DURATION.fade, ease: EASE_LUXE }}
         >
-          <div className="pointer-events-auto flex max-w-md items-center gap-3 rounded-2xl border border-white/10 bg-ink-2/90 px-4 py-2.5 shadow-2xl backdrop-blur-xl">
-            <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-white/55" aria-hidden="true">
+          <div className="glass-panel pointer-events-auto flex max-w-md items-start gap-3 rounded-2xl px-4 py-3">
+            <svg viewBox="0 0 24 24" className="mt-0.5 h-4 w-4 shrink-0 text-white/55" aria-hidden="true">
               <circle cx="7" cy="7" r="3" fill="none" stroke="currentColor" strokeWidth="1.6" />
               <circle cx="17" cy="17" r="3" fill="none" stroke="currentColor" strokeWidth="1.6" />
               <path d="M9.2 9.2l5.6 5.6" stroke="currentColor" strokeWidth="1.6" />
             </svg>
-            <p className="min-w-0 flex-1 font-sans-label text-xs text-white/80">{message}</p>
+            <div className="min-w-0 flex-1">
+              <p className="font-serif-display text-base leading-tight text-white">{headline}</p>
+              {detail && (
+                <p className="mt-1 font-sans-label text-xs leading-relaxed text-white/60">{detail}</p>
+              )}
+            </div>
             {target && (
               <button
                 type="button"

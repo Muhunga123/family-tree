@@ -6,10 +6,12 @@ import { buildLineageLayout, focalRect, layoutBounds } from '../utils/lineageLay
 import { isNarrowViewport } from '../utils/mobileChrome'
 import { initialFitMs, navDurationMs } from '../utils/motion'
 import { findKinshipPath } from '../utils/kinship'
+import { CONNECTOR } from '../design/tokens'
 import PersonCard from './PersonCard'
 import ZoomControls from './ZoomControls'
-
-const LINE = 'rgba(255,255,255,0.34)'
+import StoryOverlay from './StoryOverlay'
+import { buildLineageStops } from '../utils/storyTour'
+import { useStoryTour } from '../hooks/useStoryTour'
 
 /** Initial home framing — default ~90% zoom. */
 const HOME_FIT = { margin: 20, padding: 0.9 }
@@ -21,12 +23,16 @@ export default function TreeCanvas() {
     navigateTo,
     openPerson,
     focusId,
+    homeFocusId,
+    canGoBack,
     maxDepth,
     people,
     relateMode,
     relateAnchorId,
     relateTargetId,
     relatePick,
+    storyActive,
+    setStoryActive,
   } = useTree()
   const contentRef = useRef(null)
   const fitPadding = useViewportFitPadding()
@@ -114,13 +120,57 @@ export default function TreeCanvas() {
     [focusRect, resetView],
   )
 
+  const storyStops = useMemo(
+    () => (layout && focusId ? buildLineageStops(layout, focusId, people) : []),
+    [layout, focusId, people],
+  )
+
+  const {
+    stepIndex,
+    currentStop,
+    captionPerson,
+    captionBody,
+    voiceOn,
+    setVoiceOn,
+    stopTour,
+    totalSteps,
+  } = useStoryTour({
+    active: storyActive,
+    stops: storyStops,
+    people,
+    focusRect,
+    setStoryActive,
+  })
+
+  const storyHighlightSet = useMemo(
+    () => (storyActive && currentStop ? new Set(currentStop.personIds) : null),
+    [storyActive, currentStop],
+  )
+
+  // Re-apply home framing when Home is pressed (same person, cleared history).
+  useEffect(() => {
+    if (storyActive) return
+    if (!canGoBack && focusId && focusId === homeFocusId) {
+      hasNavigated.current = false
+      lastFitKey.current = ''
+    }
+  }, [canGoBack, focusId, homeFocusId, storyActive])
+
+  useEffect(() => {
+    if (!storyActive && focusId === homeFocusId) {
+      lastFitKey.current = ''
+      hasNavigated.current = false
+    }
+  }, [storyActive, focusId, homeFocusId])
+
   // Camera glide — FLIP handoff keeps the tapped person visually anchored.
   useEffect(() => {
-    if (!layout || interactingRef.current) return
+    if (!layout || interactingRef.current || storyActive) return
     const key = `${layoutSizeKey}:${layout.width}x${layout.height}`
     if (lastFitKey.current === key) return
 
-    const isNavigation = hasNavigated.current
+    const isHomeFraming = focusId === homeFocusId && !canGoBack
+    const isNavigation = hasNavigated.current && !isHomeFraming
     const duration = isNavigation ? navDurationMs() : initialFitMs()
 
     const bounds = layoutBounds(layout)
@@ -129,15 +179,17 @@ export default function TreeCanvas() {
     tapAnchorRef.current = null
 
     const glideOpts = {
-      ...(isNavigation ? NAV_FIT : HOME_FIT),
+      ...(isHomeFraming ? HOME_FIT : NAV_FIT),
       duration,
       ease: 'luxe',
+      bounds,
+      focalBias: isHomeFraming ? 0.42 : 0,
     }
 
     const id = requestAnimationFrame(() => {
       if (lastFitKey.current === key) return
       lastFitKey.current = key
-      if (!isNavigation) hasNavigated.current = true
+      if (!isHomeFraming) hasNavigated.current = true
 
       if (!bounds) {
         resetView()
@@ -153,7 +205,16 @@ export default function TreeCanvas() {
         if (!target) return
         glideFromScreen({ x: anchor.x, y: anchor.y }, center, target, glideOpts)
       } else {
-        centerTree(bounds, focal, glideOpts)
+        focusRect(
+          {
+            x: bounds.x + bounds.w / 2,
+            y: bounds.y + bounds.h / 2,
+            w: 0,
+            h: 0,
+          },
+          undefined,
+          glideOpts,
+        )
       }
     })
     return () => cancelAnimationFrame(id)
@@ -161,11 +222,14 @@ export default function TreeCanvas() {
     layoutSizeKey,
     layout,
     focusId,
-    centerTree,
+    homeFocusId,
+    canGoBack,
+    focusRect,
     computeFitTransform,
     glideFromScreen,
     resetView,
     interactingRef,
+    storyActive,
   ])
 
   if (!neighborhood || !layout) {
@@ -209,7 +273,7 @@ export default function TreeCanvas() {
     <div className="relative h-full w-full">
       <div
         ref={viewportRef}
-        className="h-full w-full cursor-grab overflow-hidden active:cursor-grabbing"
+        className={`h-full w-full overflow-hidden ${storyActive ? 'cursor-default' : 'cursor-grab active:cursor-grabbing'}`}
         style={{ touchAction: 'none', isolation: 'isolate' }}
         {...handlers}
       >
@@ -230,8 +294,8 @@ export default function TreeCanvas() {
                   key={i}
                   d={d}
                   fill="none"
-                  stroke={LINE}
-                  strokeWidth={1.5}
+                  stroke={CONNECTOR.parent}
+                  strokeWidth={CONNECTOR.width}
                   strokeLinecap="butt"
                   strokeLinejoin="miter"
                   shapeRendering="crispEdges"
@@ -246,10 +310,17 @@ export default function TreeCanvas() {
                 variant={node.variant}
                 positioned
                 maxDepth={maxDepth}
-                dimmed={relatePathSet ? !relatePathSet.has(node.id) : false}
+                dimmed={
+                  storyHighlightSet
+                    ? !storyHighlightSet.has(node.id)
+                    : relatePathSet
+                      ? !relatePathSet.has(node.id)
+                      : false
+                }
                 highlighted={
-                  relateMode &&
-                  (node.id === relateAnchorId || node.id === relateTargetId)
+                  (storyActive && storyHighlightSet?.has(node.id)) ||
+                  (relateMode &&
+                    (node.id === relateAnchorId || node.id === relateTargetId))
                 }
                 suppressClickRef={suppressClickRef}
                 style={{ left: node.x, top: node.y }}
@@ -262,12 +333,26 @@ export default function TreeCanvas() {
         </div>
       </div>
 
-      <ZoomControls
-        scale={transform.scale}
-        zoomIn={zoomIn}
-        zoomOut={zoomOut}
-        resetView={handleFit}
+      <StoryOverlay
+        active={storyActive}
+        captionPerson={captionPerson}
+        captionBody={captionBody}
+        labelKey={currentStop?.labelKey}
+        stepIndex={stepIndex}
+        totalSteps={totalSteps}
+        voiceOn={voiceOn}
+        onVoiceToggle={() => setVoiceOn(!voiceOn)}
+        onStop={stopTour}
       />
+
+      {!storyActive && (
+        <ZoomControls
+          scale={transform.scale}
+          zoomIn={zoomIn}
+          zoomOut={zoomOut}
+          resetView={handleFit}
+        />
+      )}
     </div>
   )
 }

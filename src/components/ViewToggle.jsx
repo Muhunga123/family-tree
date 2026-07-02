@@ -20,7 +20,7 @@ export default function ViewToggle() {
   }
 
   return (
-    <div className="flex w-max min-w-full items-center gap-0.5 rounded-full border border-white/10 bg-ink-2/85 p-0.5 shadow-lg backdrop-blur-xl sm:min-w-0">
+    <div className="glass-pill flex w-max min-w-full items-center gap-0.5 rounded-full p-0.5 sm:min-w-0">
       {OPTIONS.map((opt) => {
         const active = viewMode === opt.id
         return (
